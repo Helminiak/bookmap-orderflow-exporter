@@ -1,0 +1,30 @@
+# Gradle and Java build output
+.gradle/
+build/
+out/
+*.class
+
+# Editor and Python caches
+.idea/
+.vscode/
+*.iml
+__pycache__/
+*.py[cod]
+
+# Local configuration and credentials
+.env
+.env.*
+!.env.example
+
+# Market recordings, exports, and packaged artifacts
+*.bmf
+*.BMF
+*.ndjson
+*.ndjson.gz
+*.summary.json
+BookmapOrderflowExports/
+*.zip
+
+# Operating-system metadata
+.DS_Store
+Thumbs.db

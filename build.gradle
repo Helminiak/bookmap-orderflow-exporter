@@ -1,0 +1,27 @@
+plugins {
+    id 'java'
+}
+
+group = 'com.limacharlie.orderflow'
+version = '0.1.0'
+
+sourceCompatibility = JavaVersion.VERSION_17
+targetCompatibility = JavaVersion.VERSION_17
+
+repositories {
+    mavenCentral()
+    maven {
+        url 'https://maven.bookmap.com/maven2/releases/'
+    }
+}
+
+def bookmapApiVersion = project.findProperty('bookmapApiVersion') ?: '7.6.0.20'
+
+dependencies {
+    compileOnly group: 'com.bookmap.api', name: 'api-core', version: bookmapApiVersion
+    compileOnly group: 'com.bookmap.api', name: 'api-simplified', version: bookmapApiVersion
+}
+
+jar {
+    archiveFileName = 'bookmap-orderflow-exporter-v0.1.jar'
+}
