@@ -166,3 +166,9 @@ private orderflow entry engine
 ```
 
 Keeping this boundary clean allows the exporter to remain independently testable and suitable for public source control while proprietary trading logic remains private.
+
+## Agent entrypoints and license
+
+Before making changes, read [AGENTS.md](AGENTS.md), [the multi-LLM workflow](docs/MULTI_LLM_WORKFLOW.md) and the assigned issue. Use an owned task branch, record the full source commit and validate the actual repository state before handoff.
+
+License: not yet selected by this governance bootstrap. Preserve existing copyright and any existing license or UNLICENSED declarations; public visibility is not an open-source license.
