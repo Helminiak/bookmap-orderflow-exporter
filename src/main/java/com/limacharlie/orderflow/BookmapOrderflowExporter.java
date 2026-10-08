@@ -7,6 +7,7 @@ import java.awt.GridLayout;
 import java.io.BufferedOutputStream;
 import java.io.BufferedWriter;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -55,13 +56,14 @@ import velox.gui.StrategyPanel;
 /**
  * Raw Bookmap MBO/trade exporter for the Orderflow project.
  *
- * v0.3 adds hybrid time-or-size buffered flushing while preserving the
- * v0.1 raw event schema.
+ * v0.4 uses capacity-driven buffered disk writes with a long checkpoint
+ * interval, modeled after Bookmap's publicly documented buffered-recorder
+ * behavior while preserving the v0.1 raw event schema.
  *
  * This module intentionally performs no trading and no feature engineering.
  */
 @Layer1SimpleAttachable
-@Layer1StrategyName("Orderflow Raw Exporter v0.3")
+@Layer1StrategyName("Orderflow Raw Exporter v0.4")
 @Layer1ApiVersion(Layer1ApiVersionValue.VERSION2)
 public class BookmapOrderflowExporter implements
         CustomModule,
@@ -76,12 +78,9 @@ public class BookmapOrderflowExporter implements
     private static final int DEFAULT_QUEUE_CAPACITY = 1_000_000;
     private static final int MIN_QUEUE_CAPACITY = 10_000;
     private static final int MAX_QUEUE_CAPACITY = 5_000_000;
-    private static final int DEFAULT_FLUSH_INTERVAL_MS = 5_000;
-    private static final int MIN_FLUSH_INTERVAL_MS = 500;
-    private static final int MAX_FLUSH_INTERVAL_MS = 60_000;
-    private static final int DEFAULT_FLUSH_THRESHOLD_MIB = 4;
-    private static final int MIN_FLUSH_THRESHOLD_MIB = 1;
-    private static final int MAX_FLUSH_THRESHOLD_MIB = 64;
+    private static final int DEFAULT_FLUSH_INTERVAL_MS = 60_000;
+    private static final int MIN_FLUSH_INTERVAL_MS = 5_000;
+    private static final int MAX_FLUSH_INTERVAL_MS = 300_000;
     private static final int IO_BUFFER_BYTES = 4 * 1024 * 1024;
     private static final long STATUS_REFRESH_INTERVAL_NS = 250_000_000L;
     private static final DateTimeFormatter FILE_TS =
@@ -93,7 +92,9 @@ public class BookmapOrderflowExporter implements
         public String runTag = "";
         public int queueCapacity = DEFAULT_QUEUE_CAPACITY;
         public int flushIntervalMs = DEFAULT_FLUSH_INTERVAL_MS;
-        public int flushThresholdMiB = DEFAULT_FLUSH_THRESHOLD_MIB;
+        // Retained for compatibility with v0.3 saved settings. v0.4 no longer
+        // uses an explicit uncompressed-payload flush threshold.
+        public int flushThresholdMiB = 4;
         public boolean exportMbo = true;
         public boolean exportTrades = true;
     }
@@ -136,10 +137,10 @@ public class BookmapOrderflowExporter implements
     private Thread writerThread;
     private int effectiveQueueCapacity = DEFAULT_QUEUE_CAPACITY;
     private int effectiveFlushIntervalMs = DEFAULT_FLUSH_INTERVAL_MS;
-    private int effectiveFlushThresholdMiB = DEFAULT_FLUSH_THRESHOLD_MIB;
-    private long effectiveFlushThresholdBytes = DEFAULT_FLUSH_THRESHOLD_MIB * 1024L * 1024L;
     private volatile long recordsPersisted = 0L;
     private volatile long approxUnflushedBytes = 0L;
+    private volatile long diskBytesWritten = 0L;
+    private volatile long diskWriteOps = 0L;
     private volatile long flushCount = 0L;
     private volatile String lastFlushReason = "pending";
     private volatile long lastFlushEpochMs = 0L;
@@ -175,9 +176,6 @@ public class BookmapOrderflowExporter implements
 
             effectiveQueueCapacity = clamp(settings.queueCapacity, MIN_QUEUE_CAPACITY, MAX_QUEUE_CAPACITY);
             effectiveFlushIntervalMs = clamp(settings.flushIntervalMs, MIN_FLUSH_INTERVAL_MS, MAX_FLUSH_INTERVAL_MS);
-            effectiveFlushThresholdMiB = clamp(
-                    settings.flushThresholdMiB, MIN_FLUSH_THRESHOLD_MIB, MAX_FLUSH_THRESHOLD_MIB);
-            effectiveFlushThresholdBytes = effectiveFlushThresholdMiB * 1024L * 1024L;
             queue = new ArrayBlockingQueue<>(effectiveQueueCapacity);
             startWriter();
 
@@ -216,6 +214,8 @@ public class BookmapOrderflowExporter implements
         openOrderCount = 0;
         recordsPersisted = 0L;
         approxUnflushedBytes = 0L;
+        diskBytesWritten = 0L;
+        diskWriteOps = 0L;
         flushCount = 0L;
         lastFlushReason = "pending";
         lastFlushEpochMs = 0L;
@@ -431,19 +431,14 @@ public class BookmapOrderflowExporter implements
                 MIN_FLUSH_INTERVAL_MS,
                 MAX_FLUSH_INTERVAL_MS,
                 500));
-        flushRow.add(new JLabel("Maximum flush interval (ms): "));
+        flushRow.add(new JLabel("Maximum checkpoint interval (ms): "));
         flushRow.add(flushSpinner);
         fields.add(flushRow);
 
-        JPanel thresholdRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
-        JSpinner thresholdSpinner = new JSpinner(new SpinnerNumberModel(
-                clamp(settings.flushThresholdMiB, MIN_FLUSH_THRESHOLD_MIB, MAX_FLUSH_THRESHOLD_MIB),
-                MIN_FLUSH_THRESHOLD_MIB,
-                MAX_FLUSH_THRESHOLD_MIB,
-                1));
-        thresholdRow.add(new JLabel("Buffer flush threshold (MiB): "));
-        thresholdRow.add(thresholdSpinner);
-        fields.add(thresholdRow);
+        JLabel bufferingNote = new JLabel(
+                "<html>Disk buffer: 4 MiB compressed-output buffer; it writes automatically when full. "
+                        + "The interval below is only the maximum checkpoint age.</html>");
+        fields.add(bufferingNote);
 
         JLabel applyNote = new JLabel(
                 "<html>Apply restarts this exporter instance and starts a new output file.</html>");
@@ -475,7 +470,6 @@ public class BookmapOrderflowExporter implements
             settings.runTag = tagField.getText().trim();
             settings.queueCapacity = ((Number) queueSpinner.getValue()).intValue();
             settings.flushIntervalMs = ((Number) flushSpinner.getValue()).intValue();
-            settings.flushThresholdMiB = ((Number) thresholdSpinner.getValue()).intValue();
             api.setSettings(settings);
             api.reload();
         });
@@ -576,9 +570,12 @@ public class BookmapOrderflowExporter implements
                     .append("<br/>");
             b.append("<b>On-disk size:</b> ").append(formatFileSize(currentFileSize())).append("<br/>");
             b.append("<b>Persisted records:</b> ").append(recordsPersisted).append("<br/>");
-            b.append("<b>Buffered since flush:</b> ").append(formatFileSize(approxUnflushedBytes))
-                    .append(" / ").append(formatFileSize(effectiveFlushThresholdBytes)).append("<br/>");
-            b.append("<b>Last flush:</b> ").append(formatFlushAge())
+            b.append("<b>Approx payload since checkpoint:</b> ")
+                    .append(formatFileSize(approxUnflushedBytes)).append("<br/>");
+            b.append("<b>Application writes to OS:</b> ")
+                    .append(formatFileSize(diskBytesWritten))
+                    .append(" &nbsp; write ops=").append(diskWriteOps).append("<br/>");
+            b.append("<b>Last checkpoint:</b> ").append(formatFlushAge())
                     .append(" (").append(html(lastFlushReason)).append(")")
                     .append(" &nbsp; count=").append(flushCount).append("<br/>");
             b.append("<b>Queue:</b> ").append(queueSize).append(" / ").append(queueCapacity)
@@ -605,10 +602,10 @@ public class BookmapOrderflowExporter implements
                     .append(settings != null && settings.exportMbo)
                     .append(", Trades=")
                     .append(settings != null && settings.exportTrades)
-                    .append(", Max flush=")
+                    .append(", Checkpoint<=")
                     .append(effectiveFlushIntervalMs)
-                    .append(" ms OR ")
-                    .append(effectiveFlushThresholdMiB)
+                    .append(" ms, Disk buffer=")
+                    .append(IO_BUFFER_BYTES / (1024 * 1024))
                     .append(" MiB, Run tag=")
                     .append(html(effectiveRunTag()));
             if (error != null) {
@@ -627,18 +624,22 @@ public class BookmapOrderflowExporter implements
 
     private void startWriter() {
         writerThread = new Thread(() -> {
-            long flushIntervalNs = TimeUnit.MILLISECONDS.toNanos(effectiveFlushIntervalMs);
-            long nextFlushNs = System.nanoTime() + flushIntervalNs;
-            try (BufferedWriter out = new BufferedWriter(
-                    new OutputStreamWriter(
-                            new GZIPOutputStream(
-                                    new BufferedOutputStream(Files.newOutputStream(eventFile), IO_BUFFER_BYTES),
-                                    IO_BUFFER_BYTES,
-                                    true),
-                            StandardCharsets.UTF_8),
-                    IO_BUFFER_BYTES)) {
+            long checkpointIntervalNs = TimeUnit.MILLISECONDS.toNanos(effectiveFlushIntervalMs);
+            long nextCheckpointNs = System.nanoTime() + checkpointIntervalNs;
+
+            try (CountingOutputStream countedFile =
+                         new CountingOutputStream(Files.newOutputStream(eventFile));
+                 BufferedOutputStream bufferedFile =
+                         new BufferedOutputStream(countedFile, IO_BUFFER_BYTES);
+                 GZIPOutputStream gzip =
+                         new GZIPOutputStream(bufferedFile, IO_BUFFER_BYTES, true);
+                 OutputStreamWriter encoded =
+                         new OutputStreamWriter(gzip, StandardCharsets.UTF_8);
+                 BufferedWriter out =
+                         new BufferedWriter(encoded, IO_BUFFER_BYTES)) {
+
                 while (true) {
-                    long waitNs = Math.max(1L, nextFlushNs - System.nanoTime());
+                    long waitNs = Math.max(1L, nextCheckpointNs - System.nanoTime());
                     String line = queue.poll(waitNs, TimeUnit.NANOSECONDS);
                     if (line == POISON) {
                         break;
@@ -648,24 +649,22 @@ public class BookmapOrderflowExporter implements
                         out.newLine();
                         recordsPersisted++;
 
-                        // NDJSON generated by this addon is overwhelmingly ASCII. Counting UTF-16
-                        // characters avoids allocating a byte[] for every market event while providing
-                        // a conservative-enough trigger for batching. The threshold is a batching
-                        // target, not a durability boundary.
+                        // Diagnostic only. It is deliberately not a flush trigger in v0.4.
+                        // The actual compressed-output buffer drains automatically when full.
                         approxUnflushedBytes += line.length() + 1L;
                     }
 
                     long now = System.nanoTime();
-                    boolean sizeDue = approxUnflushedBytes >= effectiveFlushThresholdBytes;
-                    boolean timeDue = now >= nextFlushNs;
-                    if (sizeDue || timeDue) {
+                    if (now >= nextCheckpointNs) {
+                        // This is a soft application checkpoint, not fsync(). The 4 MiB
+                        // BufferedOutputStream is free to write earlier whenever it fills.
                         out.flush();
                         flushCount++;
-                        lastFlushReason = sizeDue ? "size" : "time";
+                        lastFlushReason = "checkpoint";
                         approxUnflushedBytes = 0L;
                         lastFlushEpochMs = System.currentTimeMillis();
                         scheduleStatusRefresh(true);
-                        nextFlushNs = now + flushIntervalNs;
+                        nextCheckpointNs = now + checkpointIntervalNs;
                     }
                 }
 
@@ -683,6 +682,44 @@ public class BookmapOrderflowExporter implements
         }, "bookmap-orderflow-writer");
         writerThread.setDaemon(true);
         writerThread.start();
+    }
+
+    /**
+     * Counts bytes and write calls that this process hands to the operating
+     * system below the 4 MiB BufferedOutputStream. This is not a measurement
+     * of physical NAND writes; Windows and the SSD controller can still cache,
+     * combine, and reorder writes.
+     */
+    private final class CountingOutputStream extends OutputStream {
+        private final OutputStream delegate;
+
+        private CountingOutputStream(OutputStream delegate) {
+            this.delegate = delegate;
+        }
+
+        @Override
+        public void write(int b) throws IOException {
+            delegate.write(b);
+            diskBytesWritten++;
+            diskWriteOps++;
+        }
+
+        @Override
+        public void write(byte[] b, int off, int len) throws IOException {
+            delegate.write(b, off, len);
+            diskBytesWritten += len;
+            diskWriteOps++;
+        }
+
+        @Override
+        public void flush() throws IOException {
+            delegate.flush();
+        }
+
+        @Override
+        public void close() throws IOException {
+            delegate.close();
+        }
     }
 
     /**
@@ -765,7 +802,7 @@ public class BookmapOrderflowExporter implements
         StringBuilder b = new StringBuilder(1400);
         b.append('{');
         field(b, "schema", SCHEMA).append(',');
-        field(b, "addon_version", "0.3.0").append(',');
+        field(b, "addon_version", "0.4.0").append(',');
         field(b, "alias", alias).append(',');
         rawNumberField(b, "pips", Double.toString(pips)).append(',');
         rawNumberField(b, "multiplier", Double.toString(multiplier)).append(',');
@@ -780,10 +817,12 @@ public class BookmapOrderflowExporter implements
         booleanField(b, "export_mbo", settings.exportMbo).append(',');
         booleanField(b, "export_trades", settings.exportTrades).append(',');
         numberField(b, "queue_capacity", effectiveQueueCapacity).append(',');
-        numberField(b, "max_flush_interval_ms", effectiveFlushIntervalMs).append(',');
-        numberField(b, "flush_threshold_mib", effectiveFlushThresholdMiB).append(',');
+        numberField(b, "max_checkpoint_interval_ms", effectiveFlushIntervalMs).append(',');
+        field(b, "flush_policy", "buffer_full_or_checkpoint").append(',');
         numberField(b, "io_buffer_bytes", IO_BUFFER_BYTES).append(',');
-        numberField(b, "flush_count", flushCount).append(',');
+        numberField(b, "application_disk_bytes", diskBytesWritten).append(',');
+        numberField(b, "application_disk_write_ops", diskWriteOps).append(',');
+        numberField(b, "checkpoint_flush_count", flushCount).append(',');
         field(b, "last_flush_reason", lastFlushReason).append(',');
         numberField(b, "records_persisted", recordsPersisted).append(',');
         numberField(b, "duplicate_adds", duplicateAdds).append(',');
