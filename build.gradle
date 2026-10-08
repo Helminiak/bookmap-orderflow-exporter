@@ -17,6 +17,17 @@ repositories {
 
 def bookmapApiVersion = project.findProperty('bookmapApiVersion') ?: '7.6.0.20'
 
+// The manifest identifies the checkout, not a release certification.
+def sourceRevision = providers.environmentVariable('GITHUB_SHA').orElse(
+    providers.exec { commandLine 'git', 'rev-parse', 'HEAD' }.standardOutput.asText.map { it.trim() }
+)
+def workingTreeDirty = providers.exec { commandLine 'git', 'status', '--porcelain' }.standardOutput.asText.map { !it.trim().isEmpty() }
+tasks.withType(JavaCompile).configureEach { options.encoding = 'UTF-8' }
+tasks.withType(AbstractArchiveTask).configureEach {
+    preserveFileTimestamps = false
+    reproducibleFileOrder = true
+}
+
 dependencies {
     implementation 'org.zeromq:jeromq:0.6.0'
     testImplementation 'org.junit.jupiter:junit-jupiter:5.11.0'
@@ -32,7 +43,7 @@ jar {
     from { configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) } }
     exclude 'META-INF/*.SF', 'META-INF/*.RSA', 'META-INF/*.DSA'
     archiveFileName = 'bookmap-orderflow-exporter-v0.5a.jar'
-    manifest { attributes 'Implementation-Version': project.version, 'Orderflow-Build-Revision': '0.5a' }
+    manifest { attributes 'Implementation-Version': project.version, 'Orderflow-Build-Revision': '0.5a', 'Orderflow-Source-Revision': sourceRevision.get(), 'Orderflow-Working-Tree-Dirty': workingTreeDirty.get() }
 }
 
 test { useJUnitPlatform() }

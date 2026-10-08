@@ -44,6 +44,14 @@ jobs:
       - name: Test canonical capture and summary validator
         run: python -m unittest discover -s tests -v
 
+      - name: Verify repeat-build artifact checksums
+        shell: bash
+        run: |
+          sha256sum build/libs/bookmap-orderflow-exporter-v0.5a.jar build/distributions/orderflow-v0.5a-windows-smoke-test.zip > build/reproducible-before.sha256
+          gradle --no-daemon jar smokeTestBundle --rerun-tasks
+          sha256sum build/libs/bookmap-orderflow-exporter-v0.5a.jar build/distributions/orderflow-v0.5a-windows-smoke-test.zip > build/reproducible-after.sha256
+          diff build/reproducible-before.sha256 build/reproducible-after.sha256
+
       - name: Smoke-test reproducible synthetic benchmark
         run: python tools/benchmark_exporter.py --classpath-file build/fixture-classpath.txt --cycles 10 --rate 100000 --output benchmark-result.json
 

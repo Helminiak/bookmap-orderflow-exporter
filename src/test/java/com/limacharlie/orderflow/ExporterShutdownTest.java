@@ -158,21 +158,6 @@ class ExporterShutdownTest {
             release.countDown();
             producer.get(2, TimeUnit.SECONDS);
             stop.get(3, TimeUnit.SECONDS);
-            var beforeLate = lifecycleSnapshot(exporter);
-            exporter.send("after-stop", false, 20001, 3);
-            exporter.replace("accepted", 20003, 4);
-            exporter.cancel("accepted");
-            exporter.onTrade(
-                    20001,
-                    2,
-                    new velox.api.layer1.data.TradeInfo(false, true, true, true, "a", "p"));
-            exporter.onTimestamp(999);
-            exporter.onRealtimeStart();
-            exporter.stop();
-            assertEquals(
-                    beforeLate,
-                    lifecycleSnapshot(exporter),
-                    "Late callbacks must not mutate lifecycle state");
             String text;
             try (var gzip =
                     new java.util.zip.GZIPInputStream(
@@ -199,6 +184,21 @@ class ExporterShutdownTest {
             assertTrue(summary.contains("\"records_persisted\":3"));
             assertTrue(summary.contains("\"orders_open_at_stop\":1"));
             assertTrue(summary.contains("\"writer_ok\":true"));
+            var beforeLate = lifecycleSnapshot(exporter);
+            exporter.send("after-stop", false, 20001, 3);
+            exporter.replace("accepted", 20003, 4);
+            exporter.cancel("accepted");
+            exporter.onTrade(
+                    20001,
+                    2,
+                    new velox.api.layer1.data.TradeInfo(false, true, true, true, "a", "p"));
+            exporter.onTimestamp(999);
+            exporter.onRealtimeStart();
+            exporter.stop();
+            assertEquals(
+                    beforeLate,
+                    lifecycleSnapshot(exporter),
+                    "Late callbacks must not mutate lifecycle state");
         } finally {
             release.countDown();
             pool.shutdownNow();
