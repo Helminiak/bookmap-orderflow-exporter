@@ -20,7 +20,6 @@ import velox.gui.StrategyPanel;
 import java.awt.BorderLayout;
 import java.awt.Desktop;
 import java.awt.FlowLayout;
-import java.awt.GridLayout;
 import java.io.BufferedOutputStream;
 import java.io.BufferedWriter;
 import java.io.IOException;
@@ -536,7 +535,7 @@ public class BookmapOrderflowExporter
         StrategyPanel configPanel = new StrategyPanel("Exporter configuration");
         configPanel.setLayout(new BorderLayout(4, 4));
 
-        JPanel fields = new JPanel(new GridLayout(0, 1, 4, 4));
+        JPanel fields = new BridgeConfigurationLayout.Fields();
 
         JCheckBox exportMboBox =
                 new JCheckBox("Export MBO add / replace / cancel records", settings.exportMbo);
@@ -612,7 +611,7 @@ public class BookmapOrderflowExporter
                         new SpinnerNumberModel(settings.bridgeQueueCapacity, 1, 5_000_000, 1000));
         fields.add(bridgeBox);
         fields.add(liveJournalBox);
-        JPanel bridgeRow = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        JPanel bridgeRow = new BridgeConfigurationLayout.NetworkRow();
         bridgeRow.add(new JLabel("Bind:"));
         bridgeRow.add(bindField);
         bridgeRow.add(new JLabel("Market port:"));
@@ -632,7 +631,13 @@ public class BookmapOrderflowExporter
         fields.add(applyNote);
 
         JButton applyButton = new JButton("Apply settings / restart exporter");
-        configPanel.add(fields, BorderLayout.CENTER);
+        JScrollPane fieldsScroll =
+                new JScrollPane(
+                        fields,
+                        JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,
+                        JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        fieldsScroll.setBorder(null);
+        configPanel.add(fieldsScroll, BorderLayout.CENTER);
         configPanel.add(applyButton, BorderLayout.SOUTH);
 
         browseButton.addActionListener(
