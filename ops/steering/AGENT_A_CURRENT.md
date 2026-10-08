@@ -24,4 +24,8 @@
 
 ## Latest oversight status
 
-Preliminary direction: **ON TRACK, native review pending**. PR #15 asserts unit tests and local Qwen involvement, but this steering note is not independent verification of a Windows Bookmap installation. Review the actual current PR contents before claiming acceptance. This note can be updated by the hourly ChatGPT oversight task only for source-supported significant changes. 
+Preliminary direction: **ON TRACK, native review pending**. PR #15 asserts unit tests and local Qwen involvement, but this steering note is not independent verification of a Windows Bookmap installation. Review the actual current PR contents before claiming acceptance. This note can be updated by the hourly ChatGPT oversight task only for source-supported significant changes.
+
+
+## Token-limit recovery and immediate checkpoint
+Low remaining Codex allowance: **before attempting another milestone**, follow [Agent A token-exhaustion recovery SOP](../agents/TOKEN_EXHAUSTION_RECOVERY.md), commit/push current reviewed or explicitly WIP code to Agent A's own implementation branch, update exact-SHA handoff and verify remote. If an active Codex session already has <15% allowance, save first; after reset use the SOP recovery bootstrap.
