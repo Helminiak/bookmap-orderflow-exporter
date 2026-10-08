@@ -105,6 +105,22 @@ public class BookmapOrderflowExporter
         public boolean responsiveLiveJournal = true;
     }
 
+    @FunctionalInterface
+    interface JournalOutputFactory {
+        OutputStream open(Path path) throws IOException;
+    }
+
+    private final JournalOutputFactory journalOutputFactory;
+
+    public BookmapOrderflowExporter() {
+        this(Files::newOutputStream);
+    }
+
+    // Worker I/O boundary allows deterministic disk-error tests without changing runtime defaults.
+    BookmapOrderflowExporter(JournalOutputFactory journalOutputFactory) {
+        this.journalOutputFactory = java.util.Objects.requireNonNull(journalOutputFactory);
+    }
+
     private final Map<String, OrderState> orders = new HashMap<>();
     private final AtomicReference<Throwable> writerError = new AtomicReference<>();
     private final AtomicBoolean statusUpdateScheduled = new AtomicBoolean();
@@ -1011,7 +1027,7 @@ public class BookmapOrderflowExporter
 
                             try (CountingOutputStream countedFile =
                                             new CountingOutputStream(
-                                                    Files.newOutputStream(eventFile));
+                                                    journalOutputFactory.open(eventFile));
                                     BufferedOutputStream bufferedFile =
                                             new BufferedOutputStream(countedFile, IO_BUFFER_BYTES);
                                     GZIPOutputStream gzip =
