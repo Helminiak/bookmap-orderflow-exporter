@@ -9,7 +9,7 @@ Public acquisition and canonical MBO/trade normalization for Bookmap BMF replay 
 - Windows/Ubuntu source, packaging, validator and launcher CI pass on the localized UI source anchor d447a69. Current-head closeout CI/state is reported in PR #6 and [master handoff](HANDOFF_MASTER.md).
 - A supplied physical 60-second smoke report inspected earlier passed for 4,656 new events; separate 57,771-event PASS is owner-reported. Actual Bookmap UI at Windows display DPI, sustained load, phase-separated slowdown and exceptional failure acceptance remain open.
 
-For the latest UI build and morning check, see [UI_TAB_FOLLOWUP_2026-10-08.md](docs/UI_TAB_FOLLOWUP_2026-10-08.md).
+The owner rejected the initial tab build fb77a37 in Bookmap. See [blank-configuration/shutdown repair](docs/BOOKMAP_HOST_REPAIR_2026-10-08.md) for the corrected candidate and acceptance limits; [earlier tab follow-up](docs/UI_TAB_FOLLOWUP_2026-10-08.md) is historical.
 
 Start with [HANDOFF_MASTER.md](HANDOFF_MASTER.md), [AGENTS.md](AGENTS.md), [risk register](docs/KNOWN_ISSUES_AND_RISKS.md) and [session closeout](docs/SESSION_CLOSEOUT_2026-10-08.md).
 

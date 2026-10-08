@@ -1,3 +1,5 @@
+> Current candidate repairs host collapse and shutdown backpressure/cleanup after owner rejected fb77a37; see [repair](BOOKMAP_HOST_REPAIR_2026-10-08.md). Native corrected Bookmap acceptance remains pending.
+
 > Latest authorized UI: one Orderflow exporter host with Configuration/Live status tabs; Configuration selected first, scrollable contents and fixed action buttons. Earlier two-panel/rollback descriptions below are historical anchors. See [UI follow-up](UI_TAB_FOLLOWUP_2026-10-08.md) for current build, 15 Java tests and native morning acceptance still pending.
 
 # Known issues and risk register — 2026-10-08
@@ -6,8 +8,8 @@ All issues were checked for duplicates; none existed before this closeout. Sever
 
 | ID | Severity / status | Subsystem and evidence | Remediation / required verification | Issue |
 |---|---|---|---|---|
-| R-01 | M / UI code corrected, visual pending | Network wrapping clipped equal-height grid. d447a69 bounds tests pass, Linux previews inspected | Actual Bookmap controls/Apply at Windows 100/125/150%; no new clipping | [#7](https://github.com/Helminiak/bookmap-orderflow-exporter/issues/7) |
-| R-02 | H / reviewed exceptional-path defect | stop() summary IOException/timeouts can skip bridge.close; stopped guard prevents retry | Bounded finally cleanup, preserve original failure; disk-full/interruption/rebind tests | [#8](https://github.com/Helminiak/bookmap-orderflow-exporter/issues/8) |
+| R-01 | M / initial tabs rejected; host repair tested, native pending | Network wrapping clipped equal-height grid. d447a69 bounds tests pass, Linux previews inspected | Actual Bookmap controls/Apply at Windows 100/125/150%; no new clipping | [#7](https://github.com/Helminiak/bookmap-orderflow-exporter/issues/7) |
+| R-02 | H / cleanup corrected; broader failure coverage pending | Original summary/stop failures skipped bridge cleanup; now finally closes it, summary IOException/rebind and saturated historical STOP tests pass | Retain finally cleanup; verify disk-full/interruption/stalled writer and original error, bound lifecycle latency | [#8](https://github.com/Helminiak/bookmap-orderflow-exporter/issues/8) |
 | R-03 | H / ownership/snapshot assumption | HashMap/seq/window counters assume serialized callbacks; seq read across worker thread without explicit volatile | Confirm API threading and safe publication; concurrency stress/coherent snapshot tests | [#9](https://github.com/Helminiak/bookmap-orderflow-exporter/issues/9) |
 | R-04 | H / performance acceptance incomplete | 60s physical smoke PASS; mixed max callback 1.545s; no matched slowdown test | Phase-separated heavy Bookmap tests, baseline/bridge comparison and agreed acceptance | [#7](https://github.com/Helminiak/bookmap-orderflow-exporter/issues/7) |
 | R-05 | H / retained memory budget unmeasured | 1m/100k capacities; 475.8 MiB synthetic Java RSS is not queue retention | Heap/allocation/GC per ID/event distribution and saturation, bound memory budget | [#10](https://github.com/Helminiak/bookmap-orderflow-exporter/issues/10) |

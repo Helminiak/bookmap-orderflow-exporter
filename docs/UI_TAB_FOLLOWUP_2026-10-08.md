@@ -1,3 +1,5 @@
+> Current correction: initial tab candidate fb77a37 was rejected in Bookmap. See [host/shutdown repair](BOOKMAP_HOST_REPAIR_2026-10-08.md) for reproduced cause, 18 Java tests and corrected candidate; native acceptance remains pending. Earlier implementation/acceptance statements below are historical.
+
 # Configuration / Live status tabs — authorized follow-up
 
 After the nightly notes were pushed at d9da782b052b67b6d151c1198305b22f4cbf29fc and Windows/Ubuntu CI passed, the owner reported that configuration was hidden and requested another tab-layout attempt. This supersedes the earlier restriction to keeping two Bookmap panels; it does not authorize exporter behavior changes.

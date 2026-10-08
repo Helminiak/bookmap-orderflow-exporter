@@ -499,7 +499,6 @@ public class BookmapOrderflowExporter
                 throw new IllegalStateException("Writer did not terminate within 30 seconds");
             }
             writeSummary();
-            if (bridge != null) bridge.close();
             Throwable error = writerError.get();
             if (error != null) {
                 throw new IllegalStateException("Writer failed; export is not valid", error);
@@ -516,6 +515,8 @@ public class BookmapOrderflowExporter
             uiMessage = "Summary write failed: " + e;
             scheduleStatusRefresh(true);
             throw new IllegalStateException("Unable to write exporter summary", e);
+        } finally {
+            if (bridge != null) bridge.close();
         }
     }
 
@@ -533,7 +534,10 @@ public class BookmapOrderflowExporter
         StrategyPanel panel = new StrategyPanel("Orderflow exporter");
         panel.setLayout(new BorderLayout(4, 4));
         panel.add(buildExporterTabs(settings, api, instance), BorderLayout.CENTER);
-        setEnabledRecursively(panel, api != null);
+        // StrategyPanel.setEnabled delegates into Bookmap's own recursive GUI helpers.
+        // Enable our contents directly, including tabs, without depending on those internals.
+        for (java.awt.Component child : panel.getComponents())
+            setEnabledRecursively(child, api != null);
         return new StrategyPanel[] {panel};
     }
 
@@ -712,16 +716,28 @@ public class BookmapOrderflowExporter
                     "<html>Enable the exporter for an instrument to see live status.</html>");
         }
 
-        JTabbedPane tabs = new JTabbedPane();
+        JTabbedPane tabs = new JTabbedPane() {
+            @Override
+            public java.awt.Dimension getMinimumSize() {
+                java.awt.Dimension minimum = super.getMinimumSize();
+                // Keep room for the action row, tab headers and six readable text lines
+                // when Bookmap's horizontal-only GridBag host falls back to minimum sizes.
+                return new java.awt.Dimension(0,
+                        minimum.height + getFontMetrics(getFont()).getHeight() * 6);
+            }
+        };
         tabs.addTab("Configuration", configPanel);
         tabs.addTab("Live status", statusPanel);
         tabs.setSelectedIndex(0);
-        tabs.setMinimumSize(new java.awt.Dimension(0, 0));
         return tabs;
     }
 
     private static void setEnabledRecursively(java.awt.Component component, boolean enabled) {
-        component.setEnabled(enabled);
+        // Navigation remains usable while the addon is disabled; editable settings do not.
+        boolean navigation = component instanceof JTabbedPane
+                || component instanceof JScrollPane
+                || component instanceof javax.swing.JScrollBar;
+        component.setEnabled(navigation || enabled);
         if (component instanceof java.awt.Container container) {
             for (java.awt.Component child : container.getComponents()) {
                 setEnabledRecursively(child, enabled);
@@ -1006,7 +1022,8 @@ public class BookmapOrderflowExporter
     /** Strict historical extraction; LIVE queue overflow fails the archive instead of waiting. */
     private void enqueue(CanonicalEvent event) {
         if (bridge != null) {
-            if (realtimePhase) bridge.offer(event);
+            // Lifecycle STOP must not wait up to ten seconds for historical ACK capacity.
+            if (realtimePhase || stopped) bridge.offer(event);
             else bridge.offerHistorical(event);
         }
         boolean responsive = realtimePhase && settings.responsiveLiveJournal;

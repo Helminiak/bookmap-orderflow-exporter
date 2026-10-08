@@ -1,6 +1,10 @@
 # Master engineering handoff — 2026-10-08
 
-## Latest authorized UI follow-up
+## Current repair after owner rejection
+
+Owner rejected fb77a37: actual Bookmap Configuration blank and disable stalled. Current source corrects reproduced host minimum-size collapse, keeps disabled-addon tabs/scrollbars navigable, avoids historical ACK capacity waits for lifecycle STOP, and closes bridge in finally. See [host/shutdown repair](docs/BOOKMAP_HOST_REPAIR_2026-10-08.md). Public tests now total 18 Java / 15 Python; six repaired-runtime integration tests passed. Corrected actual Windows Bookmap acceptance remains pending. The older "latest" UI section below is historical; final repair SHA/CI are in PR #6.
+
+## Prior authorized UI follow-up
 
 After the nightly checkpoint `d9da782b052b67b6d151c1198305b22f4cbf29fc`, the owner reported configuration hidden and explicitly requested tabs. Current UI now returns **one Orderflow exporter Bookmap panel** with **Configuration** selected first and **Live status** second. Configuration retains the measured network row and scrolls with Apply fixed; status diagnostics scroll with Refresh/Open export folder fixed. The two-panel statements below describe the nightly baseline, not the latest UI. No exporter defaults/network/journal logic changed. See [UI follow-up and morning check](docs/UI_TAB_FOLLOWUP_2026-10-08.md).
 

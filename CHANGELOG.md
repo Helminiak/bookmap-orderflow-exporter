@@ -2,6 +2,13 @@
 
 This project keeps the acquisition layer public and versioned so the development path is visible from the original exporter scaffold through later validation-driven changes. Proprietary entry-quality logic belongs in the separate private `orderflow-entry-engine` repository and is intentionally excluded here.
 
+## Bookmap host / shutdown repair — 2026-10-08 (candidate)
+
+- Owner rejected fb77a37: blank Configuration and disable stall. Reproduce horizontal-only Bookmap host collapsing zero-minimum tab content; use font-based viewport/minimum sizes and preserve scrolling.
+- Keep disabled-addon tab/scroll navigation while settings/Apply remain disabled; enable plugin contents without internal StrategyPanel recursive GUI helper dependency.
+- Lifecycle STOP uses non-waiting bridge offer; ordinary HISTORY unchanged. Bridge cleanup runs in finally even on summary failure; errors/invalidity remain observable.
+- Add host and shutdown regressions. Corrected native Bookmap acceptance still pending; see docs/BOOKMAP_HOST_REPAIR_2026-10-08.md.
+
 ## UI tab follow-up — 2026-10-08 (candidate, native acceptance pending)
 
 - After nightly notes, owner requested tabs because configuration was hidden. Return one Bookmap panel with Configuration first and Live status second.

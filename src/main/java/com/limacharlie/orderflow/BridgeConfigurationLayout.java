@@ -56,7 +56,13 @@ final class BridgeConfigurationLayout {
 
         @Override
         public Dimension getPreferredScrollableViewportSize() {
-            return getPreferredSize();
+            Dimension natural = getPreferredSize();
+            var metrics = getFontMetrics(getFont());
+            // Bookmap gives plugin rows horizontal fill only. A full-form preferred height
+            // forces its host into minimum-size layout; use a scrollable viewport instead.
+            return new Dimension(
+                    0, // Host supplies width; long labels must not force minimum-size fallback.
+                    Math.min(natural.height, metrics.getHeight() * 12));
         }
 
         @Override

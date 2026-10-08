@@ -141,6 +141,67 @@ class ExporterTabsTest {
     }
 
     @Test
+    void bookmapHorizontalOnlyHostDoesNotCollapseConfiguration() throws Exception {
+        SwingUtilities.invokeAndWait(
+                () -> {
+                    for (double scale : new double[] {1, 1.25, 1.5}) {
+                        var panels = BookmapOrderflowExporter.getCustomDisabledSettingsPanels();
+                        assertEquals(1, panels.length);
+                        var panel = panels[0];
+                        BridgeConfigurationLayoutTest.fonts(panel, scale);
+                        var host = new JPanel(new GridBagLayout());
+                        var constraints = new GridBagConstraints();
+                        constraints.gridx = constraints.gridy = 0;
+                        constraints.weightx = 1;
+                        constraints.fill = GridBagConstraints.HORIZONTAL;
+                        constraints.insets = new Insets(5, 3, 5, 3);
+                        host.add(panel, constraints);
+                        constraints.gridy = 1;
+                        constraints.weighty = 1;
+                        host.add(Box.createVerticalBox(), constraints);
+                        host.setSize(560, 360);
+                        BridgeConfigurationLayoutTest.layout(host);
+                        var tabs = find(panel, JTabbedPane.class, null);
+                        assertTrue(tabs.isEnabled(), "disabled-addon tabs must remain navigable");
+                        var config = (Container) tabs.getComponentAt(0);
+                        var scroll = find(config, JScrollPane.class, null);
+                        assertTrue(scroll.getVerticalScrollBar().isEnabled());
+                        assertFalse(
+                                find(config, JButton.class, "Apply settings / restart exporter")
+                                        .isEnabled());
+                        assertTrue(
+                                scroll.getViewport().getHeight() >= 60,
+                                "Bookmap host collapsed Configuration: scale="
+                                        + scale
+                                        + " panel="
+                                        + panel.getSize());
+                        assertTrue(scroll.getViewport().getView().getHeight() > 0);
+                        String out = System.getenv("ORDERFLOW_TAB_PREVIEWS");
+                        if (out != null) {
+                            try {
+                                var image =
+                                        new BufferedImage(
+                                                host.getWidth(),
+                                                host.getHeight(),
+                                                BufferedImage.TYPE_INT_RGB);
+                                var graphics = image.createGraphics();
+                                host.paint(graphics);
+                                graphics.dispose();
+                                Files.createDirectories(Path.of(out));
+                                ImageIO.write(
+                                        image,
+                                        "png",
+                                        Path.of(out, "bookmap-host-scale-" + scale + ".png")
+                                                .toFile());
+                            } catch (Exception e) {
+                                throw new RuntimeException(e);
+                            }
+                        }
+                    }
+                });
+    }
+
+    @Test
     void applyStillSavesEditedSettingsAndReloadsOnce() throws Exception {
         SwingUtilities.invokeAndWait(
                 () -> {

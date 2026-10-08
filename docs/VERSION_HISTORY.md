@@ -1,3 +1,5 @@
+> Current correction: initial tab candidate fb77a37 was rejected in Bookmap. See [host/shutdown repair](BOOKMAP_HOST_REPAIR_2026-10-08.md) for reproduced cause, 18 Java tests and corrected candidate; native acceptance remains pending. Earlier implementation/acceptance statements below are historical.
+
 > Latest authorized UI: one Orderflow exporter host with Configuration/Live status tabs; Configuration selected first, scrollable contents and fixed action buttons. Earlier two-panel/rollback descriptions below are historical anchors. See [UI follow-up](UI_TAB_FOLLOWUP_2026-10-08.md) for current build, 15 Java tests and native morning acceptance still pending.
 
 # Version history reconstructed from Git
