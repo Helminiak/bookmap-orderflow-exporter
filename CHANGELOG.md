@@ -2,6 +2,14 @@
 
 This project keeps the acquisition layer public and versioned so the development path is visible from the original exporter scaffold through later validation-driven changes. Proprietary entry-quality logic belongs in the separate private `orderflow-entry-engine` repository and is intentionally excluded here.
 
+## v0.4 runtime validation follow-up - 2026-10-08
+
+- Approved the tested v0.4 capture/export workflow after independent validation of the complete 786,347-record archive and matching summary; see [scope and evidence](docs/validation/2026-10-08-v0.4-runtime-validation.md).
+- Added strict schema/lifecycle/timestamp/MBO/execution-marker checks to the public validator and optional `--summary` checks for writer status, counts, pips and v0.4 finalized byte accounting.
+- Corrected validation exit status so inconsistent MBO state/time reversals do not receive a successful result.
+- Added synthetic regression tests to Windows/Ubuntu build CI. No raw market data or proprietary model logic is committed.
+- v0.5 feature work is on hold pending the project owner's updates. Java recorder source and version remain v0.4.0.
+
 ## [0.4.0] - 2026-10-08
 
 ### Changed
