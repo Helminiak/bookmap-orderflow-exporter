@@ -2,6 +2,14 @@
 
 Purpose: use Bookmap as the decoding layer for historical `.bmf` replay and live market data while emitting a normalized raw event stream for downstream Orderflow research.
 
+## Project status
+
+- **v0.1 runtime validated:** first real Bookmap replay/live capture completed with 519,012 ordered records and a clean writer summary.
+- **v0.2 build verified:** Windows and Ubuntu CI compile/package successfully against Bookmap API `7.6.0.20`.
+- **v0.2 runtime validation pending:** the next Bookmap test will verify the native settings/status UI and periodic disk flushing.
+- Development history is intentionally preserved. See [CHANGELOG.md](CHANGELOG.md) and [the first runtime validation record](docs/validation/2026-10-08-v0.1-first-runtime-capture.md).
+
+
 ## Repository boundary
 
 This repository is the **data-acquisition and normalization layer**.
@@ -23,6 +31,7 @@ Configurable items:
 - output directory
 - run tag
 - writer queue capacity
+- disk flush interval (100-10,000 ms; default 1,000 ms)
 - export MBO records on/off
 - export trade records on/off
 
@@ -35,6 +44,9 @@ The live status panel shows:
 - Bookmap market/replay timestamp
 - active output file
 - writer queue utilization
+- records persisted to the writer
+- current on-disk file size
+- last flush age
 - MBO add/replace/cancel counts
 - trade count
 - number of tracked MBO orders
@@ -119,6 +131,8 @@ The run tag is also configurable in Bookmap. If blank, `ORDERFLOW_RUN_TAG` is us
 
 The historical extraction path uses strict backpressure: when the writer queue fills, the Bookmap callback blocks rather than silently dropping market events. This is intentional for historical extraction correctness. A production low-latency live-stream path may use a different transport design.
 
+v0.2 periodically flushes the buffered/GZIP output so file growth is visible during an active capture rather than only when the addon is stopped. The default flush interval is 1,000 ms and is configurable in Bookmap.
+
 ## Output files
 
 Each run creates files similar to:
@@ -145,7 +159,11 @@ For a clean validation test require:
 
 Unknown replace/cancel events are not automatically proof of corrupt BMF data; they can also indicate initial-state semantics around attachment. Bookmap replay behavior must be observed before those cases are normalized away.
 
-## First validation experiment
+## Validation history
+
+The first completed runtime capture is documented in [`docs/validation/2026-10-08-v0.1-first-runtime-capture.md`](docs/validation/2026-10-08-v0.1-first-runtime-capture.md). It demonstrated coherent historical MBO reconstruction and continuity into live Rithmic callbacks.
+
+For subsequent validation runs, record:
 
 Record:
 
