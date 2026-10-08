@@ -147,17 +147,29 @@ class ExporterTest {
                     new InstrumentInfo("SYNTH", "CME", "TEST", .25, 1, "Synthetic", true),
                     api(settings),
                     null);
-            exporter.onTimestamp(1_000_000_000L);
-            exporter.onRealtimeStart();
-            for (int i = 0; i < 100; i++) exporter.send("order-" + i, i % 2 == 0, 20000 + i, 2);
-            for (int i = 0; i < 20; i++) exporter.replace("order-" + i, 20001 + i, 3);
-            for (int i = 0; i < 30; i++)
-                exporter.onTrade(
-                        20000,
-                        2,
-                        new TradeInfo(false, true, true, true, "aggr-" + i, "order-" + i));
-            for (int i = 0; i < 40; i++) exporter.cancel("order-" + i);
-            var stopping = java.util.concurrent.CompletableFuture.runAsync(exporter::stop);
+            var stopping =
+                    java.util.concurrent.CompletableFuture.runAsync(
+                            () -> {
+                                exporter.onTimestamp(1_000_000_000L);
+                                exporter.onRealtimeStart();
+                                for (int i = 0; i < 100; i++)
+                                    exporter.send("order-" + i, i % 2 == 0, 20000 + i, 2);
+                                for (int i = 0; i < 20; i++)
+                                    exporter.replace("order-" + i, 20001 + i, 3);
+                                for (int i = 0; i < 30; i++)
+                                    exporter.onTrade(
+                                            20000,
+                                            2,
+                                            new TradeInfo(
+                                                    false,
+                                                    true,
+                                                    true,
+                                                    true,
+                                                    "aggr-" + i,
+                                                    "order-" + i));
+                                for (int i = 0; i < 40; i++) exporter.cancel("order-" + i);
+                                exporter.stop();
+                            });
             var wire = new java.util.ArrayList<String>();
             var seqPattern = java.util.regex.Pattern.compile("\\\"seq\\\":(\\d+)");
             while (wire.size() < 193) {
@@ -200,9 +212,20 @@ class ExporterTest {
                 new InstrumentInfo("SYNTH", "CME", "TEST", .25, 1, "Synthetic", true),
                 api(settings),
                 null);
-        exporter.onTimestamp(100);
-        exporter.onRealtimeStart();
-        for (int i = 0; i < 100; i++) exporter.send("x-" + i, true, 20000, 1);
+        // Consume START before switching to LIVE, then stop ACKing to provoke LIVE overflow.
+        try (var context = new org.zeromq.ZContext()) {
+            var dealer = context.createSocket(org.zeromq.SocketType.DEALER);
+            dealer.setReceiveTimeOut(2000);
+            dealer.setLinger(0);
+            dealer.connect("tcp://127.0.0.1:" + settings.bridgePort);
+            dealer.send("HELLO overflow-test 0");
+            assertTrue(dealer.recvStr().contains("WELCOME"));
+            assertTrue(dealer.recvStr().contains("\"seq\":1"));
+            dealer.send("ACK overflow-test 1");
+            exporter.onTimestamp(100);
+            exporter.onRealtimeStart();
+            for (int i = 0; i < 100; i++) exporter.send("x-" + i, true, 20000, 1);
+        }
         exporter.stop();
         Path summary =
                 Files.list(dir)

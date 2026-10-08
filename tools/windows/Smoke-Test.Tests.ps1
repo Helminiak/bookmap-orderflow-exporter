@@ -50,6 +50,15 @@ try {
         & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $script -Jar $dummyJar -JavaPath $fakeJava -HostName 127.0.0.1 -ReportDirectory $temp -Seconds 5 -NoPrompt
         if ($LASTEXITCODE -ne $expected) { throw "$case expected exit $expected, got $LASTEXITCODE" }
     }
+    # Parameter defaults must resolve from the script file, not the launch directory.
+    $copiedScript = Join-Path $temp 'Smoke-Test.ps1'
+    Copy-Item $script $copiedScript
+    Copy-Item $dummyJar (Join-Path $temp 'bookmap-orderflow-exporter-v0.5.jar')
+    Get-ChildItem $temp -Filter 'smoke-test-*.json' | Remove-Item
+    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $copiedScript -JavaPath $fakeJava -HostName 127.0.0.1 -Seconds 5 -NoPrompt
+    # Last fixture has stalled ACKs; paths must resolve and produce a report, even on FAIL.
+    if ($LASTEXITCODE -ne 1) { throw 'Default path invocation did not execute smoke validation' }
+    if (-not (Get-ChildItem $temp -Filter 'smoke-test-*.json')) { throw 'Default report path was not resolved' }
     $reply = New-Sample | ConvertTo-Json -Compress -Depth 6
     Set-Content $fakeJava ("@echo off`r`necho $reply`r`nexit /b 0`r`n") -Encoding ASCII
     $resolved = Resolve-LocalHealthHost $fakeJava $dummyJar 5556 @('192.168.50.20')

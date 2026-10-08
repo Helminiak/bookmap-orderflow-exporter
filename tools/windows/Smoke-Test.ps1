@@ -1,14 +1,20 @@
 [CmdletBinding()]
 param(
-    [string]$Jar = (Join-Path $PSScriptRoot 'bookmap-orderflow-exporter-v0.5.jar'),
+    [string]$Jar = '',
     [string]$HostName = '',
     [ValidateRange(1,65535)][int]$HealthPort = 5556,
     [ValidateRange(5,3600)][int]$Seconds = 60,
     [string]$JavaPath,
-    [string]$ReportDirectory = $PSScriptRoot,
+    [string]$ReportDirectory = '',
     [switch]$NoPrompt
 )
 $ErrorActionPreference = 'Stop'
+# Resolve after parameter binding; retain the file's location across function/dot-source scopes.
+$script:SmokeDirectory = [IO.Path]::GetDirectoryName($PSCommandPath)
+if (-not $script:SmokeDirectory) { $script:SmokeDirectory = $PSScriptRoot }
+if (-not $script:SmokeDirectory) { $script:SmokeDirectory = (Get-Location).Path }
+if (-not $Jar) { $Jar = Join-Path $script:SmokeDirectory 'bookmap-orderflow-exporter-v0.5.jar' }
+if (-not $ReportDirectory) { $ReportDirectory = $script:SmokeDirectory }
 
 function Measure-BridgeSample {
     param($Sample, $PreviousAck, $PreviousPublished)

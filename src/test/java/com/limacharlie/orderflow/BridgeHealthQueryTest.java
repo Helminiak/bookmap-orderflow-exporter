@@ -89,4 +89,35 @@ class BridgeHealthQueryTest {
             bridge.close();
         }
     }
+
+    @Test
+    void historicalQueueWaitsForAckWithoutOverflow() throws Exception {
+        int market = ExporterTest.freePort(), health = ExporterTest.freePort();
+        var bridge = new LiveBridge("127.0.0.1", market, health, 1, "SYNTH", .25, () -> "{}");
+        try (var context = new ZContext()) {
+            assertTrue(bridge.offerHistorical(new CanonicalEvent(1, 1, () -> "{}")));
+            var pending =
+                    java.util.concurrent.CompletableFuture.supplyAsync(
+                            () -> bridge.offerHistorical(new CanonicalEvent(2, 2, () -> "{}")));
+            Thread.sleep(100);
+            assertFalse(pending.isDone());
+            assertFalse(bridge.invalid());
+            var receiver = context.createSocket(SocketType.DEALER);
+            receiver.setLinger(0);
+            receiver.setReceiveTimeOut(2000);
+            receiver.connect("tcp://127.0.0.1:" + market);
+            receiver.send("HELLO owner 0");
+            assertTrue(receiver.recvStr().contains("WELCOME"));
+            assertTrue(receiver.recvStr().contains("\"type\":\"EVENT\""));
+            receiver.send("ACK owner 1");
+            assertTrue(pending.get(2, java.util.concurrent.TimeUnit.SECONDS));
+            assertTrue(receiver.recvStr().contains("\"type\":\"EVENT\""));
+            receiver.send("ACK owner 2");
+            bridge.finishHistorical();
+            assertEquals(0, bridge.depth());
+            assertFalse(bridge.invalid());
+        } finally {
+            bridge.close();
+        }
+    }
 }

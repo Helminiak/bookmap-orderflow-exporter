@@ -80,3 +80,12 @@ Defaults: automatically find the listener on this Windows machine’s private LA
 Configuration and Status now live in one Bookmap StrategyPanel, with explicit internal tabs and Configuration selected first. Both views scroll. This avoids relying on the host to display two returned panels. Stop/reload now finishes bounded ACK grace and releases old sockets before the new instance binds; the previous asynchronous five-second shutdown could leave the old port occupied during Apply. Same-port restart is regression-tested.
 
 The Windows BAT prints local private LAN addresses and auto-detects the existing health listener on those addresses or localhost. Linux’s private `tools/linux/Start-Receiver.sh` prints its own default-route LAN IP and probes only the directly attached private subnet (at most /23) for the Bookmap health protocol. Neither probe registers a market receiver. If Bookmap is disabled/unreachable, Linux asks for the Windows IP printed by the BAT; an IP cannot be discovered from a listener that does not answer. Firewall and receiver registration remain explicit setup steps.
+
+
+### Historical catch-up and empty receiver recovery
+
+Historical callbacks may wait for bridge ACK capacity for up to ten seconds per stalled wait. The historical backlog drains before REALTIME_START, then LIVE callbacks remain non-waiting and overflow still invalidates continuity. Start the Linux receiver before Apply/restart; do not increase capacity to conceal lost events. A missing or stalled historical receiver produces an explicit timeout and requires a fresh START. Waiting affects historical catch-up speed and the REALTIME transition, not the steady-state LIVE enqueue path.
+
+A receiver that has accepted zero events may re-arm for a different healthy publisher session after connecting to an already-invalid session. Once even START has been accepted, publisher-session changes continue to fail closed. Restart that receiver before applying the exporter.
+
+The Windows helper resolves default JAR/report paths after parameter binding. Run the BAT, not the PS1 by double-click; the BAT keeps results visible.

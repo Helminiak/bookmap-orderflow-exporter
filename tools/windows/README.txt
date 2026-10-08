@@ -12,7 +12,7 @@ ORDERFLOW v0.5 - UPDATED CONFIGURATION + LIVE BRIDGE SMOKE TEST
 5. Enable the bridge in Bookmap and Apply/restart for a fresh START.
    If the stream is INVALID: restart Ubuntu's receiver first, then restart
    the exporter. Keep responsive live journal enabled.
-6. Double-click Smoke-Test.bat ON THE WINDOWS BOOKMAP MACHINE. Press Enter
+6. Do not double-click the PS1 helper directly. Double-click Smoke-Test.bat ON THE WINDOWS BOOKMAP MACHINE. Press Enter
    after Ubuntu shows HEALTHY and Bookmap is receiving/replaying events.
 
 Java 17+ must be available. If not found, the launcher asks for the full

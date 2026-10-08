@@ -90,6 +90,33 @@ public final class LiveBridge implements AutoCloseable {
         return true;
     }
 
+    /** Historical catch-up may wait for ACK capacity; LIVE must always use offer(). */
+    public boolean offerHistorical(CanonicalEvent event) {
+        long deadline = System.nanoTime() + 10_000_000_000L;
+        while (depth.get() >= capacity && running && !invalid) {
+            if (Thread.currentThread().isInterrupted() || System.nanoTime() >= deadline) {
+                invalidate(
+                        "historical receiver backpressure timeout; start receiver then fresh"
+                            + " START");
+                return false;
+            }
+            java.util.concurrent.locks.LockSupport.parkNanos(100_000L);
+        }
+        return offer(event);
+    }
+
+    /** Drain historical backlog before the callback stream switches to non-waiting LIVE. */
+    public void finishHistorical() {
+        long deadline = System.nanoTime() + 10_000_000_000L;
+        while (depth.get() > 0 && running && !invalid) {
+            if (Thread.currentThread().isInterrupted() || System.nanoTime() >= deadline) {
+                invalidate("historical receiver drain timeout; fresh START required");
+                return;
+            }
+            java.util.concurrent.locks.LockSupport.parkNanos(100_000L);
+        }
+    }
+
     public void invalidate(String why) {
         reason = why;
         invalid = true;

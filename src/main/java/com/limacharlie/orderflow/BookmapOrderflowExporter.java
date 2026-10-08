@@ -469,6 +469,7 @@ public class BookmapOrderflowExporter
     public void onRealtimeStart() {
         long callbackStart = System.nanoTime();
         try {
+            if (bridge != null) bridge.finishHistorical();
             realtimePhase = true;
             emitControl("REALTIME_START", "Bookmap historical catch-up completed");
             uiMessage = "Realtime";
@@ -1049,7 +1050,10 @@ public class BookmapOrderflowExporter
 
     /** Strict historical extraction; LIVE queue overflow fails the archive instead of waiting. */
     private void enqueue(CanonicalEvent event) {
-        if (bridge != null) bridge.offer(event);
+        if (bridge != null) {
+            if (realtimePhase) bridge.offer(event);
+            else bridge.offerHistorical(event);
+        }
         boolean responsive = realtimePhase && settings.responsiveLiveJournal;
         Throwable error = writerError.get();
         if (error != null) {
