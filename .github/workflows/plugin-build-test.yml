@@ -40,12 +40,12 @@ jobs:
       - name: Inspect packaged JAR
         shell: bash
         run: |
-          test -f build/libs/bookmap-orderflow-exporter-v0.3.jar
-          jar tf build/libs/bookmap-orderflow-exporter-v0.3.jar | grep 'com/limacharlie/orderflow/BookmapOrderflowExporter.class'
+          test -f build/libs/bookmap-orderflow-exporter-v0.4.jar
+          jar tf build/libs/bookmap-orderflow-exporter-v0.4.jar | grep 'com/limacharlie/orderflow/BookmapOrderflowExporter.class'
 
       - name: Upload JAR
         uses: actions/upload-artifact@v4
         with:
-          name: bookmap-orderflow-exporter-v0.3-${{ matrix.os }}
-          path: build/libs/bookmap-orderflow-exporter-v0.3.jar
+          name: bookmap-orderflow-exporter-v0.4-${{ matrix.os }}
+          path: build/libs/bookmap-orderflow-exporter-v0.4.jar
           if-no-files-found: error
