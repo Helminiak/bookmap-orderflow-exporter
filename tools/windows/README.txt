@@ -1,10 +1,14 @@
-ORDERFLOW v0.5 - UPDATED CONFIGURATION + LIVE BRIDGE SMOKE TEST
+ORDERFLOW v0.5 - BOOKMAP HOST LAYOUT / STOP REPAIR CANDIDATE
 
 1. Extract this ZIP into a normal folder. Keep all files together.
 2. Close Bookmap and replace its previous exporter JAR with the JAR here.
    Keep one exporter addon installed. Restart Bookmap.
-3. The original Bookmap layout is restored: Exporter configuration and
-   Live exporter status panels, with the original rows and Apply settings button.
+3. Open the single Orderflow exporter panel. Configuration opens first;
+   Live status is the second tab. Scroll Configuration to see all settings.
+   Apply stays visible below the settings. Tabs/scrolling work even when
+   the addon is disabled; editing and Apply are disabled until it is enabled.
+   This repairs the initial blank-tab candidate; actual Bookmap acceptance
+   is still pending. Check visibility and normal disable behavior before approval.
 4. On Ubuntu start the existing private receiver, using your Windows LAN IP:
    python -m orderflow_bridge.receiver --host WINDOWS_LAN_IP --port 5555 --health-port 5556
 5. Enable the bridge in Bookmap and Apply/restart for a fresh START.

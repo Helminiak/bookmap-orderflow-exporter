@@ -2,6 +2,8 @@
 
 The owner rejected fb77a37 in actual Bookmap: Configuration was blank and disabling the addon stalled. That candidate is not runtime-approved and must not be recommended as a working Bookmap UI. Prior Linux tab-content previews/green CI did not cover Bookmap host geometry.
 
+Runtime repair source anchor: `d7022e88740bc705b67c32e96327861c4bf93774`. A subsequent packaging-note commit corrects the Windows bundle README to describe tabs; final delivered SHA is recorded in PR #6 and ORDERFLOW-LATEST-BUILD.txt.
+
 ## Reproduced cause and correction
 
 Read-only inspection of installed Bookmap's panel wrapper showed horizontal-only GridBag fill for plugin panels (weighty zero), with a weighted vertical filler. The old tabs explicitly allowed zero minimum size while their scrolling contents requested the entire form's preferred size. A constrained host falls back to minimum sizes and collapses Configuration's viewport. The new regression recreates those host constraints using the actual StrategyPanel factory at font scales 1/1.25/1.5 and initially failed with the old sizing.
