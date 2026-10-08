@@ -231,6 +231,8 @@ public final class LiveBridge implements AutoCloseable {
             data.setLinger(0);
             health.setLinger(0);
             data.setRouterMandatory(true);
+            // Reconnect may arrive before the old pipe for the same identity is removed.
+            data.setRouterHandover(true);
             data.setSndHWM(512);
             data.setRcvHWM(512);
             health.setSendTimeOut(0);
