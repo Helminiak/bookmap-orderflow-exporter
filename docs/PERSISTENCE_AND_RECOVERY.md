@@ -20,3 +20,5 @@ Clean stop emits STOP when applicable, attempts bounded poison enqueue/30s join,
 Crash/disk full/forced kill may leave a truncated gzip, missing trailer/STOP/summary or invalid partial stream. Preserve the original for forensics, validate to EOF including CRC/ISIZE, and never certify an incomplete prefix as a full session. No automated archive repair or exactly-once cross-process resume is implemented. Recover by a new exporter START/book population; keep sessions separate and retain source/build provenance. Disk headroom and licensing remain operator responsibilities.
 
 Lifecycle STOP uses non-waiting bridge offer even in HISTORY to avoid a ten-second capacity wait during disable. Full retention still invalidates/counts loss; normal HISTORY event backpressure is unchanged.
+
+Bridge worker shutdown wakes its short park with unpark rather than interrupt, so JeroMQ context termination can complete before port reuse. CI exposed an intermittent health-port rebind failure with interruption; a five-cycle immediate reuse regression guards the correction.

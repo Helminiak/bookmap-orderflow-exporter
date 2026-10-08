@@ -371,7 +371,9 @@ public final class LiveBridge implements AutoCloseable {
             java.util.concurrent.locks.LockSupport.parkNanos(1_000_000L);
         if (depth.get() > 0) invalidate("shutdown with unacknowledged events");
         running = false;
-        worker.interrupt();
+        // Interrupting the worker can abort JeroMQ context termination before both ports
+        // are released. Wake its short park without setting the interrupt flag.
+        java.util.concurrent.locks.LockSupport.unpark(worker);
         if (Thread.currentThread() != worker) {
             try {
                 worker.join(1500);

@@ -54,24 +54,26 @@ class ExporterShutdownTest {
 
     @Test
     void historicalStopDoesNotWaitForMissingReceiverCapacity() throws Exception {
-        int port = ExporterTest.freePort(), health = ExporterTest.freePort();
-        var exporter = exporter(port, health);
-        try {
-            awaitBound(exporter); // START fills the one-event retention; no receiver ACKs it.
-            assertTimeoutPreemptively(Duration.ofSeconds(3), exporter::stop);
-            assertCanRebind(port, health);
-            Path capture =
-                    Files.list(dir)
-                            .filter(p -> p.toString().endsWith(".gz"))
-                            .findFirst()
-                            .orElseThrow();
-            try (var gzip = new java.util.zip.GZIPInputStream(Files.newInputStream(capture))) {
-                assertTrue(
-                        new String(gzip.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8)
-                                .contains("\"control\":\"STOP\""));
+        for (int iteration = 0; iteration < 5; iteration++) {
+            int port = ExporterTest.freePort(), health = ExporterTest.freePort();
+            var exporter = exporter(port, health);
+            try {
+                awaitBound(exporter); // START fills the one-event retention; no receiver ACKs it.
+                assertTimeoutPreemptively(Duration.ofSeconds(3), exporter::stop);
+                assertCanRebind(port, health);
+                Path capture =
+                        Files.list(dir)
+                                .filter(p -> p.toString().endsWith(".gz"))
+                                .findFirst()
+                                .orElseThrow();
+                try (var gzip = new java.util.zip.GZIPInputStream(Files.newInputStream(capture))) {
+                    assertTrue(
+                            new String(gzip.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8)
+                                    .contains("\"control\":\"STOP\""));
+                }
+            } finally {
+                exporter.stop();
             }
-        } finally {
-            exporter.stop();
         }
     }
 
