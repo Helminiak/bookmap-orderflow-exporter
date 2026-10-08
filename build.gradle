@@ -31,7 +31,8 @@ jar {
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     from { configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) } }
     exclude 'META-INF/*.SF', 'META-INF/*.RSA', 'META-INF/*.DSA'
-    archiveFileName = 'bookmap-orderflow-exporter-v0.5.jar'
+    archiveFileName = 'bookmap-orderflow-exporter-v0.5a.jar'
+    manifest { attributes 'Implementation-Version': project.version, 'Orderflow-Build-Revision': '0.5a' }
 }
 
 test { useJUnitPlatform() }
@@ -43,7 +44,7 @@ tasks.register('writeFixtureClasspath') {
 
 tasks.register('smokeTestBundle', Zip) {
     dependsOn jar
-    archiveFileName = 'orderflow-v0.5-windows-smoke-test.zip'
+    archiveFileName = 'orderflow-v0.5a-windows-smoke-test.zip'
     destinationDirectory = layout.buildDirectory.dir('distributions')
     from(tasks.jar)
     from('tools/windows') { exclude '*Tests.ps1' }

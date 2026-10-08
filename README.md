@@ -5,11 +5,11 @@ Public acquisition and canonical MBO/trade normalization for Bookmap BMF replay 
 ## Current state
 
 - Known validated main baseline: **v0.4.0**, main `2e0c0c79df9801a68ff9c3f3332a2ffff558ee2d`; 786,347-record capture validation is documented, not a universal completeness certificate.
-- Development: **0.5.0 candidate**, `feature/linux-live-bridge`, [draft PR #6](https://github.com/Helminiak/bookmap-orderflow-exporter/pull/6). Optional single-JAR ACKed bridge, responsive LIVE journal, measured network-row height and a single panel with Configuration/Live status tabs are implemented. No merge, release or tag is implied.
+- Development: **v0.5a UI preview / 0.5.0 candidate**, `feature/linux-live-bridge`, [draft PR #6](https://github.com/Helminiak/bookmap-orderflow-exporter/pull/6). Optional single-JAR ACKed bridge, responsive LIVE journal, measured network-row height and a single panel with Configuration/Live status tabs are implemented. No merge, release or tag is implied.
 - Windows/Ubuntu source, packaging, validator and launcher CI pass on the localized UI source anchor d447a69. Current-head closeout CI/state is reported in PR #6 and [master handoff](HANDOFF_MASTER.md).
 - A supplied physical 60-second smoke report inspected earlier passed for 4,656 new events; separate 57,771-event PASS is owner-reported. Actual Bookmap UI at Windows display DPI, sustained load, phase-separated slowdown and exceptional failure acceptance remain open.
 
-The owner rejected the initial tab build fb77a37 in Bookmap. See [blank-configuration/shutdown repair](docs/BOOKMAP_HOST_REPAIR_2026-10-08.md) for the corrected candidate and acceptance limits; [earlier tab follow-up](docs/UI_TAB_FOLLOWUP_2026-10-08.md) is historical.
+See [whole-page v0.5a follow-up](docs/UI_V05A_2026-10-08.md) for the latest UI preview. The owner confirmed the preceding repair can be disabled, with a brief pause; this does not certify the new UI. The owner rejected the initial tab build fb77a37 in Bookmap. See [blank-configuration/shutdown repair](docs/BOOKMAP_HOST_REPAIR_2026-10-08.md) for the corrected candidate and acceptance limits; [earlier tab follow-up](docs/UI_TAB_FOLLOWUP_2026-10-08.md) is historical.
 
 Start with [HANDOFF_MASTER.md](HANDOFF_MASTER.md), [AGENTS.md](AGENTS.md), [risk register](docs/KNOWN_ISSUES_AND_RISKS.md) and [session closeout](docs/SESSION_CLOSEOUT_2026-10-08.md).
 
@@ -23,7 +23,7 @@ python -m unittest discover -s tests -v
 python tools/validate_export.py CAPTURE.ndjson.gz --summary CAPTURE.summary.json
 ```
 
-Outputs: `build/libs/bookmap-orderflow-exporter-v0.5.jar`, `build/distributions/orderflow-v0.5-windows-smoke-test.zip`. Close Bookmap before replacing the JAR; install only one exporter addon. Enable **Orderflow Raw Exporter v0.5** for an instrument. One **Orderflow exporter** Bookmap panel contains **Configuration** (opens first) and **Live status** tabs. Both scroll when needed; action buttons stay visible. Network controls retain their original sizes/FlowLayout, with measured wrapping height and as-needed vertical settings scrolling; Apply stays outside scrolling. Apply saves settings/reloads and begins a new file/session.
+Outputs: `build/libs/bookmap-orderflow-exporter-v0.5a.jar`, `build/distributions/orderflow-v0.5a-windows-smoke-test.zip`. Close Bookmap before replacing the JAR; install only one exporter addon. Enable **Orderflow Raw Exporter v0.5a** for an instrument. One **Orderflow exporter** panel contains **Configuration** (opens first), **Live status** and **Information**. Bookmap's outer scrollbar scrolls the entire Configuration page, including Apply at the bottom; there is no smaller nested settings viewport. Network controls keep measured wrapping. Status diagnostics retain their own scrolling. Information provides the preview label and original help/support content. Apply saves settings/reloads and begins a new file/session. A short disable pause can occur during archive finalization and bridge cleanup. UI revision 0.5a does not change the canonical schema, transport or software metadata version 0.5.0.
 
 The ZIP contains JAR, BAT, PS1 and README. Keep them together and run BAT on Windows, not PS1 double-click. It discovers Java/LAN health and reports PASS/FAIL/INCONCLUSIVE without registering a second market receiver. The private receiver must be started before opening/enabling a fresh Bookmap bridge session. Full setup/recovery is in [LINUX_BRIDGE.md](docs/LINUX_BRIDGE.md) and [testing/troubleshooting](docs/TESTING_AND_TROUBLESHOOTING.md).
 

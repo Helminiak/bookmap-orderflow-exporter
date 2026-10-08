@@ -13,7 +13,7 @@ $ErrorActionPreference = 'Stop'
 $script:SmokeDirectory = [IO.Path]::GetDirectoryName($PSCommandPath)
 if (-not $script:SmokeDirectory) { $script:SmokeDirectory = $PSScriptRoot }
 if (-not $script:SmokeDirectory) { $script:SmokeDirectory = (Get-Location).Path }
-if (-not $Jar) { $Jar = Join-Path $script:SmokeDirectory 'bookmap-orderflow-exporter-v0.5.jar' }
+if (-not $Jar) { $Jar = Join-Path $script:SmokeDirectory 'bookmap-orderflow-exporter-v0.5a.jar' }
 if (-not $ReportDirectory) { $ReportDirectory = $script:SmokeDirectory }
 
 function Measure-BridgeSample {

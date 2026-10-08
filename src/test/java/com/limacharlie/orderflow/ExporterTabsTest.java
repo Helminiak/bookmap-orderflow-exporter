@@ -31,170 +31,170 @@ class ExporterTabsTest {
     }
 
     @Test
-    void configurationIsFirstAndBothTabsRemainScrollable() throws Exception {
+    void configurationAndApplyShareTheWholePage() throws Exception {
         SwingUtilities.invokeAndWait(
                 () -> {
                     for (double scale : new double[] {1, 1.25, 1.5}) {
                         var tabs =
                                 BookmapOrderflowExporter.buildExporterTabs(
                                         new BookmapOrderflowExporter.Settings(), null, null);
-                        assertEquals(2, tabs.getTabCount());
+                        BridgeConfigurationLayoutTest.fonts(tabs, scale);
+                        assertEquals(3, tabs.getTabCount());
                         assertEquals("Configuration", tabs.getTitleAt(0));
                         assertEquals("Live status", tabs.getTitleAt(1));
+                        assertEquals("Information", tabs.getTitleAt(2));
                         assertEquals(0, tabs.getSelectedIndex());
-                        BridgeConfigurationLayoutTest.fonts(tabs, scale);
-                        tabs.setSize(560, 360);
-                        for (int index = 0; index < 2; index++) {
-                            tabs.setSelectedIndex(index);
-                            if (index == 1) {
-                                var statusScroll =
-                                        find(
-                                                (Container) tabs.getComponentAt(index),
-                                                JScrollPane.class,
-                                                null);
-                                ((JLabel) statusScroll.getViewport().getView())
-                                        .setText(
-                                                "<html>"
-                                                        + "Synthetic status line<br>".repeat(80)
-                                                        + "</html>");
+                        var config = (Container) tabs.getComponentAt(0);
+                        assertNull(
+                                find(config, JScrollPane.class, null),
+                                "no nested configuration scroll box");
+                        assertNotNull(
+                                find(config, JButton.class, "Apply settings / restart exporter"));
+                        var info = (Container) tabs.getComponentAt(2);
+                        assertTrue(find(info, JLabel.class, null).getText().contains("v0.5a"));
+                        assertNotNull(find(info, JButton.class, "Installation / help"));
+                        var statusScroll =
+                                find((Container) tabs.getComponentAt(1), JScrollPane.class, null);
+                        assertNotNull(statusScroll, "existing status scrolling retained");
+                        ((JLabel) statusScroll.getViewport().getView())
+                                .setText(
+                                        "<html>"
+                                                + "Synthetic status line<br>".repeat(80)
+                                                + "</html>");
+                        tabs.setSelectedIndex(1);
+                        tabs.setSize(560, tabs.getPreferredSize().height);
+                        BridgeConfigurationLayoutTest.layout(tabs);
+                        assertTrue(statusScroll.getViewport().getHeight() > 0);
+                        assertTrue(statusScroll.getVerticalScrollBar().isVisible());
+                        var status = (Container) tabs.getComponentAt(1);
+                        var refresh = find(status, JButton.class, "Refresh");
+                        assertTrue(
+                                refresh.getY() + refresh.getHeight()
+                                        <= refresh.getParent().getHeight());
+                    }
+                });
+    }
+
+    @Test
+    void bookmapOuterScrollReachesEveryFieldAndApply() throws Exception {
+        SwingUtilities.invokeAndWait(
+                () -> {
+                    for (double scale : new double[] {1, 1.25, 1.5}) {
+                        for (int width : new int[] {400, 560, 800}) {
+                            var panel =
+                                    BookmapOrderflowExporter.getCustomDisabledSettingsPanels()[0];
+                            BridgeConfigurationLayoutTest.fonts(panel, scale);
+                            var host = new JPanel(new GridBagLayout());
+                            var constraints = new GridBagConstraints();
+                            constraints.gridx = constraints.gridy = 0;
+                            constraints.weightx = 1;
+                            constraints.fill = GridBagConstraints.HORIZONTAL;
+                            constraints.insets = new Insets(5, 3, 5, 3);
+                            host.add(panel, constraints);
+                            constraints.gridy = 1;
+                            constraints.weighty = 1;
+                            host.add(Box.createVerticalBox(), constraints);
+                            var outerScroll =
+                                    new JScrollPane(
+                                            host,
+                                            JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,
+                                            JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+                            outerScroll.setSize(width, 360);
+                            // Bookmap supplies the host width; retain natural page height.
+                            host.setSize(width - 24, host.getPreferredSize().height);
+                            BridgeConfigurationLayoutTest.layout(host);
+                            host.setPreferredSize(
+                                    new Dimension(width - 24, host.getPreferredSize().height));
+                            BridgeConfigurationLayoutTest.layout(outerScroll);
+                            var tabs = find(panel, JTabbedPane.class, null);
+                            assertTrue(tabs.isEnabled());
+                            var config = (Container) tabs.getComponentAt(0);
+                            var apply =
+                                    find(
+                                            config,
+                                            JButton.class,
+                                            "Apply settings / restart exporter");
+                            assertFalse(apply.isEnabled());
+                            assertTrue(outerScroll.getVerticalScrollBar().isVisible());
+                            var fields = find(config, BridgeConfigurationLayout.Fields.class, null);
+                            assertTrue(fields.getHeight() > 0);
+                            int lastBottom = 0;
+                            for (Component row : fields.getComponents()) {
+                                assertTrue(row.getY() >= lastBottom, "rows overlap");
+                                lastBottom = row.getY() + row.getHeight();
+                                if (row instanceof BridgeConfigurationLayout.NetworkRow network)
+                                    for (Component control : network.getComponents()) {
+                                        assertEquals(control.getPreferredSize(), control.getSize());
+                                        assertTrue(
+                                                control.getY() + control.getHeight()
+                                                        <= network.getHeight());
+                                        assertTrue(
+                                                control.getX() + control.getWidth()
+                                                        <= network.getWidth());
+                                    }
                             }
-                            BridgeConfigurationLayoutTest.layout(tabs);
-                            var body = (Container) tabs.getComponentAt(index);
-                            var scroll = find(body, JScrollPane.class, null);
-                            assertNotNull(scroll);
-                            assertTrue(scroll.getViewport().getHeight() > 0);
-                            if (index == 0) {
-                                var apply =
-                                        find(
-                                                body,
-                                                JButton.class,
-                                                "Apply settings / restart exporter");
-                                assertNotNull(apply);
-                                assertSame(body, apply.getParent());
-                                assertTrue(apply.getY() + apply.getHeight() <= body.getHeight());
-                                assertTrue(scroll.getVerticalScrollBar().isVisible());
-                                var fields = (Container) scroll.getViewport().getView();
-                                for (Component row : fields.getComponents())
-                                    if (row instanceof BridgeConfigurationLayout.NetworkRow network)
-                                        for (Component control : network.getComponents()) {
-                                            assertTrue(
-                                                    control.getY() + control.getHeight()
-                                                            <= network.getHeight());
-                                            assertTrue(
-                                                    control.getX() + control.getWidth()
-                                                            <= network.getWidth());
-                                            assertEquals(
-                                                    control.getPreferredSize(), control.getSize());
-                                        }
-                            }
-                            if (index == 1) assertTrue(scroll.getVerticalScrollBar().isVisible());
+                            assertTrue(fields.getY() + lastBottom <= apply.getY());
+                            var buttonBounds =
+                                    SwingUtilities.convertRectangle(
+                                            apply.getParent(), apply.getBounds(), host);
+                            outerScroll
+                                    .getViewport()
+                                    .setViewPosition(
+                                            new Point(
+                                                    0,
+                                                    Math.max(
+                                                            0,
+                                                            buttonBounds.y
+                                                                    + buttonBounds.height
+                                                                    - outerScroll
+                                                                            .getViewport()
+                                                                            .getHeight())));
+                            assertTrue(
+                                    outerScroll.getViewport().getViewRect().contains(buttonBounds),
+                                    "Apply must be fully reachable by outer scrolling");
+                            assertTrue(
+                                    find(
+                                                    (Container) tabs.getComponentAt(2),
+                                                    JButton.class,
+                                                    "Installation / help")
+                                            .isEnabled());
                             String out = System.getenv("ORDERFLOW_TAB_PREVIEWS");
-                            if (out != null) {
+                            if (out != null && width == 560) {
                                 try {
-                                    var image =
-                                            new BufferedImage(
-                                                    tabs.getWidth(),
-                                                    tabs.getHeight(),
-                                                    BufferedImage.TYPE_INT_RGB);
-                                    var graphics = image.createGraphics();
-                                    tabs.paint(graphics);
-                                    graphics.dispose();
                                     Files.createDirectories(Path.of(out));
+                                    var bottom =
+                                            new BufferedImage(
+                                                    width, 360, BufferedImage.TYPE_INT_RGB);
+                                    var bottomGraphics = bottom.createGraphics();
+                                    outerScroll.paint(bottomGraphics);
+                                    bottomGraphics.dispose();
                                     ImageIO.write(
-                                            image,
+                                            bottom,
                                             "png",
-                                            Path.of(
-                                                            out,
-                                                            "tab-" + index + "-scale-" + scale
-                                                                    + ".png")
+                                            Path.of(out, "page-bottom-scale-" + scale + ".png")
                                                     .toFile());
-                                    if (index == 0) {
-                                        scroll.getViewport()
-                                                .setViewPosition(
-                                                        new Point(
-                                                                0,
-                                                                scroll.getViewport()
-                                                                                .getView()
-                                                                                .getHeight()
-                                                                        - scroll.getViewport()
-                                                                                .getHeight()));
-                                        graphics = image.createGraphics();
-                                        tabs.paint(graphics);
+                                    for (int index : new int[] {0, 2}) {
+                                        tabs.setSelectedIndex(index);
+                                        BridgeConfigurationLayoutTest.layout(outerScroll);
+                                        outerScroll.getViewport().setViewPosition(new Point(0, 0));
+                                        var image =
+                                                new BufferedImage(
+                                                        width, 360, BufferedImage.TYPE_INT_RGB);
+                                        var graphics = image.createGraphics();
+                                        outerScroll.paint(graphics);
                                         graphics.dispose();
                                         ImageIO.write(
                                                 image,
                                                 "png",
                                                 Path.of(
                                                                 out,
-                                                                "config-bottom-scale-"
-                                                                        + scale
+                                                                "page-" + index + "-scale-" + scale
                                                                         + ".png")
                                                         .toFile());
                                     }
                                 } catch (Exception e) {
                                     throw new RuntimeException(e);
                                 }
-                            }
-                        }
-                    }
-                });
-    }
-
-    @Test
-    void bookmapHorizontalOnlyHostDoesNotCollapseConfiguration() throws Exception {
-        SwingUtilities.invokeAndWait(
-                () -> {
-                    for (double scale : new double[] {1, 1.25, 1.5}) {
-                        var panels = BookmapOrderflowExporter.getCustomDisabledSettingsPanels();
-                        assertEquals(1, panels.length);
-                        var panel = panels[0];
-                        BridgeConfigurationLayoutTest.fonts(panel, scale);
-                        var host = new JPanel(new GridBagLayout());
-                        var constraints = new GridBagConstraints();
-                        constraints.gridx = constraints.gridy = 0;
-                        constraints.weightx = 1;
-                        constraints.fill = GridBagConstraints.HORIZONTAL;
-                        constraints.insets = new Insets(5, 3, 5, 3);
-                        host.add(panel, constraints);
-                        constraints.gridy = 1;
-                        constraints.weighty = 1;
-                        host.add(Box.createVerticalBox(), constraints);
-                        host.setSize(560, 360);
-                        BridgeConfigurationLayoutTest.layout(host);
-                        var tabs = find(panel, JTabbedPane.class, null);
-                        assertTrue(tabs.isEnabled(), "disabled-addon tabs must remain navigable");
-                        var config = (Container) tabs.getComponentAt(0);
-                        var scroll = find(config, JScrollPane.class, null);
-                        assertTrue(scroll.getVerticalScrollBar().isEnabled());
-                        assertFalse(
-                                find(config, JButton.class, "Apply settings / restart exporter")
-                                        .isEnabled());
-                        assertTrue(
-                                scroll.getViewport().getHeight() >= 60,
-                                "Bookmap host collapsed Configuration: scale="
-                                        + scale
-                                        + " panel="
-                                        + panel.getSize());
-                        assertTrue(scroll.getViewport().getView().getHeight() > 0);
-                        String out = System.getenv("ORDERFLOW_TAB_PREVIEWS");
-                        if (out != null) {
-                            try {
-                                var image =
-                                        new BufferedImage(
-                                                host.getWidth(),
-                                                host.getHeight(),
-                                                BufferedImage.TYPE_INT_RGB);
-                                var graphics = image.createGraphics();
-                                host.paint(graphics);
-                                graphics.dispose();
-                                Files.createDirectories(Path.of(out));
-                                ImageIO.write(
-                                        image,
-                                        "png",
-                                        Path.of(out, "bookmap-host-scale-" + scale + ".png")
-                                                .toFile());
-                            } catch (Exception e) {
-                                throw new RuntimeException(e);
                             }
                         }
                     }

@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.5a UI preview — 2026-10-08
+
+- Scroll the entire Configuration page with Bookmap's outer scrollbar, including Apply at the bottom; remove the nested settings viewport.
+- Add original Information/help tab and visible v0.5a title, filenames and manifest revision. Runtime metadata/protocol/defaults remain unchanged.
+- Keep repaired clean disable behavior; document its possible archive/ACK finalization pause. Native new-preview acceptance remains pending.
+
 This project keeps the acquisition layer public and versioned so the development path is visible from the original exporter scaffold through later validation-driven changes. Proprietary entry-quality logic belongs in the separate private `orderflow-entry-engine` repository and is intentionally excluded here.
 
 ## Bookmap host / shutdown repair — 2026-10-08 (candidate)

@@ -61,7 +61,7 @@ import javax.swing.SwingUtilities;
  * <p>This module intentionally performs no trading and no feature engineering.
  */
 @Layer1SimpleAttachable
-@Layer1StrategyName("Orderflow Raw Exporter v0.5")
+@Layer1StrategyName("Orderflow Raw Exporter v0.5a")
 @Layer1ApiVersion(Layer1ApiVersionValue.VERSION2)
 public class BookmapOrderflowExporter
         implements CustomModule,
@@ -547,7 +547,7 @@ public class BookmapOrderflowExporter
             Settings settings, Api api, BookmapOrderflowExporter instance) {
         JPanel configPanel = new JPanel(new BorderLayout(4, 4));
 
-        JPanel fields = new BridgeConfigurationLayout.Fields();
+        BridgeConfigurationLayout.Fields fields = new BridgeConfigurationLayout.Fields();
 
         JCheckBox exportMboBox =
                 new JCheckBox("Export MBO add / replace / cancel records", settings.exportMbo);
@@ -643,14 +643,9 @@ public class BookmapOrderflowExporter
         fields.add(applyNote);
 
         JButton applyButton = new JButton("Apply settings / restart exporter");
-        JScrollPane fieldsScroll =
-                new JScrollPane(
-                        fields,
-                        JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,
-                        JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
-        fieldsScroll.setBorder(null);
-        fieldsScroll.setMinimumSize(new java.awt.Dimension(0, 0));
-        configPanel.add(fieldsScroll, BorderLayout.CENTER);
+        // Bookmap already scrolls its plugin host. Keep the complete form, including
+        // Apply, in that page instead of creating a smaller nested settings viewport.
+        configPanel.add(fields, BorderLayout.CENTER);
         configPanel.add(applyButton, BorderLayout.SOUTH);
 
         browseButton.addActionListener(
@@ -695,7 +690,8 @@ public class BookmapOrderflowExporter
         statusScroll.setBorder(null);
         statusScroll.setMinimumSize(new java.awt.Dimension(0, 0));
         // Growing HTML diagnostics must scroll rather than enlarge or hide the configuration.
-        statusScroll.getViewport().setPreferredSize(fieldsScroll.getPreferredSize());
+        statusScroll.getViewport().setPreferredSize(
+                fields.getPreferredScrollableViewportSize());
         statusScroll.getVerticalScrollBar().setUnitIncrement(20);
         statusPanel.add(statusScroll, BorderLayout.CENTER);
 
@@ -719,22 +715,70 @@ public class BookmapOrderflowExporter
         JTabbedPane tabs = new JTabbedPane() {
             @Override
             public java.awt.Dimension getMinimumSize() {
-                java.awt.Dimension minimum = super.getMinimumSize();
-                // Keep room for the action row, tab headers and six readable text lines
-                // when Bookmap's horizontal-only GridBag host falls back to minimum sizes.
-                return new java.awt.Dimension(0,
-                        minimum.height + getFontMetrics(getFont()).getHeight() * 6);
+                // Preserve the complete page height in Bookmap's horizontal-only host.
+                // Its outer scrollbar can then reach every row and Apply at the bottom.
+                return new java.awt.Dimension(0, getPreferredSize().height);
             }
         };
         tabs.addTab("Configuration", configPanel);
         tabs.addTab("Live status", statusPanel);
+        tabs.addTab("Information", buildInformationPanel());
         tabs.setSelectedIndex(0);
         return tabs;
     }
 
+    private static JPanel buildInformationPanel() {
+        JPanel information = new JPanel(new BorderLayout());
+        JPanel content = new JPanel(new BorderLayout(4, 8));
+        JLabel title = new JLabel("<html>Orderflow Raw Exporter<br>v0.5a — preview build</html>");
+        title.putClientProperty("orderflow.navigation", true);
+        content.add(title, BorderLayout.NORTH);
+        javax.swing.JTextArea description = new javax.swing.JTextArea(
+                "Exports Bookmap MBO and trade callbacks to compressed event archives. "
+                + "The optional Live Linux bridge sends the same events to your receiver.\n\n"
+                + "Configuration: choose export settings and use Apply at the bottom of the page. "
+                + "Apply restarts the exporter and starts a new archive.\n\n"
+                + "Live status: view archive and bridge health, refresh diagnostics, or open the export folder.\n\n"
+                + "When disabling, allow a short pause while the archive finishes and bridge closes. "
+                + "A pause alone does not indicate a failure.");
+        description.putClientProperty("orderflow.navigation", true);
+        description.setEditable(false);
+        description.setLineWrap(true);
+        description.setWrapStyleWord(true);
+        description.setOpaque(false);
+        description.setFont(title.getFont());
+        description.setRows(15);
+        content.add(description, BorderLayout.CENTER);
+        JPanel links = new BridgeConfigurationLayout.NetworkRow();
+        addInformationLink(links, "Installation / help",
+                "https://github.com/Helminiak/bookmap-orderflow-exporter/blob/feature/linux-live-bridge/docs/LINUX_BRIDGE.md");
+        addInformationLink(links, "Report an issue",
+                "https://github.com/Helminiak/bookmap-orderflow-exporter/issues");
+        content.add(links, BorderLayout.SOUTH);
+        information.add(content, BorderLayout.NORTH);
+        return information;
+    }
+
+    private static void addInformationLink(JPanel links, String label, String url) {
+        JButton button = new JButton(label);
+        button.putClientProperty("orderflow.navigation", true);
+        button.addActionListener(e -> {
+            try {
+                Desktop.getDesktop().browse(java.net.URI.create(url));
+            } catch (Exception failure) {
+                javax.swing.JOptionPane.showMessageDialog(links,
+                        "Open this address in your browser:\n" + url, label,
+                        javax.swing.JOptionPane.INFORMATION_MESSAGE);
+            }
+        });
+        links.add(button);
+    }
+
     private static void setEnabledRecursively(java.awt.Component component, boolean enabled) {
         // Navigation remains usable while the addon is disabled; editable settings do not.
-        boolean navigation = component instanceof JTabbedPane
+        boolean navigation = component instanceof javax.swing.JComponent c
+                        && Boolean.TRUE.equals(c.getClientProperty("orderflow.navigation"))
+                || component instanceof JTabbedPane
                 || component instanceof JScrollPane
                 || component instanceof javax.swing.JScrollBar;
         component.setEnabled(navigation || enabled);

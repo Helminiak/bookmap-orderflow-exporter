@@ -1,5 +1,7 @@
 > Current candidate repairs host collapse and shutdown backpressure/cleanup after owner rejected fb77a37; see [repair](BOOKMAP_HOST_REPAIR_2026-10-08.md). Native corrected Bookmap acceptance remains pending.
 
+Latest UI follow-up: [v0.5a whole-page preview](UI_V05A_2026-10-08.md). The owner reports the previous repair disables successfully with a short pause. v0.5a moves the complete Configuration form and Apply into Bookmap's outer scrolling page and adds original Information/help content. Runtime/defaults are unchanged; actual new-preview Windows Bookmap acceptance remains pending. [Marketplace draft](MARKETPLACE_DRAFT.md) is preparation only, not submission or release approval. Older state below is historical.
+
 > Latest authorized UI: one Orderflow exporter host with Configuration/Live status tabs; Configuration selected first, scrollable contents and fixed action buttons. Earlier two-panel/rollback descriptions below are historical anchors. See [UI follow-up](UI_TAB_FOLLOWUP_2026-10-08.md) for current build, 15 Java tests and native morning acceptance still pending.
 
 # Known issues and risk register — 2026-10-08

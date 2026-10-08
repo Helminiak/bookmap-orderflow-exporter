@@ -1,5 +1,7 @@
 # Master engineering handoff — 2026-10-08
 
+Latest UI follow-up: [v0.5a whole-page preview](docs/UI_V05A_2026-10-08.md). The owner reports the previous repair disables successfully with a short pause. v0.5a moves the complete Configuration form and Apply into Bookmap's outer scrolling page and adds original Information/help content. Runtime/defaults are unchanged; actual new-preview Windows Bookmap acceptance remains pending. [Marketplace draft](docs/MARKETPLACE_DRAFT.md) is preparation only, not submission or release approval. Older state below is historical.
+
 ## Current repair after owner rejection
 
 Owner rejected fb77a37: actual Bookmap Configuration blank and disable stalled. Runtime repair anchor `d7022e88740bc705b67c32e96327861c4bf93774` corrects reproduced host minimum-size collapse, keeps disabled-addon tabs/scrollbars navigable, avoids historical ACK capacity waits for lifecycle STOP, and closes bridge in finally. A subsequent CI health-port reuse failure also led to waking the publisher with unpark instead of interrupt during context termination; the close/rebind test now repeats five cycles without retries. See [host/shutdown repair](docs/BOOKMAP_HOST_REPAIR_2026-10-08.md). Public tests now total 18 Java / 15 Python; six repaired-runtime integration tests passed. Corrected actual Windows Bookmap acceptance remains pending. The older "latest" UI section below is historical; final repair SHA/CI are in PR #6.

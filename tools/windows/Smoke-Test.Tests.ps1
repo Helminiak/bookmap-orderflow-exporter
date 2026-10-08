@@ -53,7 +53,7 @@ try {
     # Parameter defaults must resolve from the script file, not the launch directory.
     $copiedScript = Join-Path $temp 'Smoke-Test.ps1'
     Copy-Item $script $copiedScript
-    Copy-Item $dummyJar (Join-Path $temp 'bookmap-orderflow-exporter-v0.5.jar')
+    Copy-Item $dummyJar (Join-Path $temp 'bookmap-orderflow-exporter-v0.5a.jar')
     Get-ChildItem $temp -Filter 'smoke-test-*.json' | Remove-Item
     & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $copiedScript -JavaPath $fakeJava -HostName 127.0.0.1 -Seconds 5 -NoPrompt
     # Last fixture has stalled ACKs; paths must resolve and produce a report, even on FAIL.
