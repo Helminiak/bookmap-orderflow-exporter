@@ -52,3 +52,5 @@ try {
     }
 } finally { Remove-Item -LiteralPath $temp -Recurse -Force }
 Write-Host 'Smoke launcher health validation and PASS/FAIL/INCONCLUSIVE reports passed.'
+# The final negative fixture deliberately exits 1; clear it before the CI shell checks LASTEXITCODE.
+exit 0
