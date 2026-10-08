@@ -94,3 +94,8 @@ The Windows helper resolves default JAR/report paths after parameter binding. Ru
 The exporter tabs now request a 640 × 820 panel (600 × 740 configuration viewport) to restore a larger settings view; Bookmap controls the actual available window size. Width tracking, scrolling and the fixed Apply button remain. The BAT checks Bookmap's bundled Java first, then JAVA_HOME, PATH and common vendor folders. Automatic candidates must report Java 17+; a manually supplied -JavaPath remains available.
 
 On 2026-10-08 the owner reported the Linux receiver displayed HEALTHY and the Windows BAT displayed CONNECTED/PASS with 57,771 new events. This establishes a user-reported physical LAN smoke-test success. The saved smoke report has not been reviewed here, and application slowdown/load acceptance is still separate.
+
+
+### Configuration layout rollback
+
+At the owner's request, the settings UI is restored exactly to the original v0.5 layout from 9318064: separate Exporter configuration and Live exporter status StrategyPanels, original field rows and Apply button. The custom tab container, preferred-size overrides and scroll helpers are removed. Earlier UI layout descriptions above are superseded. Bridge reliability fixes, historical backpressure and automatic Java discovery remain unchanged. Tests specific to the removed tab/scroll layout are removed; transport/exporter regressions still apply.

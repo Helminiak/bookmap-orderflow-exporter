@@ -20,6 +20,7 @@ import velox.gui.StrategyPanel;
 import java.awt.BorderLayout;
 import java.awt.Desktop;
 import java.awt.FlowLayout;
+import java.awt.GridLayout;
 import java.io.BufferedOutputStream;
 import java.io.BufferedWriter;
 import java.io.IOException;
@@ -532,76 +533,34 @@ public class BookmapOrderflowExporter
 
     private static StrategyPanel[] buildPanels(
             Settings settings, Api api, BookmapOrderflowExporter instance) {
-        StrategyPanel panel = new StrategyPanel("Orderflow exporter");
-        panel.setLayout(new BorderLayout());
-        panel.add(buildExporterTabs(settings, api, instance), BorderLayout.CENTER);
-        setEnabledRecursively(panel, api != null);
-        return new StrategyPanel[] {panel};
-    }
-
-    static javax.swing.JTabbedPane buildExporterTabs(
-            Settings settings, Api api, BookmapOrderflowExporter instance) {
-        JPanel configPanel = buildConfigurationPanel(settings, api);
-
-        JPanel statusPanel = new JPanel();
-        statusPanel.setLayout(new BorderLayout(4, 4));
-        JLabel status = new JLabel();
-        status.setVerticalAlignment(SwingConstants.TOP);
-        statusPanel.add(status, BorderLayout.CENTER);
-
-        JPanel buttons = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
-        JButton refreshButton = new JButton("Refresh");
-        JButton openFolderButton = new JButton("Open export folder");
-        buttons.add(refreshButton);
-        buttons.add(openFolderButton);
-        statusPanel.add(buttons, BorderLayout.SOUTH);
-
-        if (instance != null) {
-            instance.statusLabel = status;
-            instance.refreshStatusLabel();
-            refreshButton.addActionListener(e -> instance.refreshStatusLabel());
-            openFolderButton.addActionListener(e -> instance.openOutputFolder());
-        } else {
-            status.setText(
-                    "<html>Enable the exporter for an instrument to see live status.</html>");
-        }
-
-        JScrollPane statusScroll = new JScrollPane(statusPanel);
-        statusScroll.getVerticalScrollBar().setUnitIncrement(20);
-        javax.swing.JTabbedPane tabs = new javax.swing.JTabbedPane();
-        tabs.addTab("Configuration", configPanel);
-        tabs.addTab("Status", statusScroll);
-        tabs.setSelectedIndex(0);
-        tabs.setPreferredSize(new java.awt.Dimension(640, 820));
-        tabs.setMinimumSize(new java.awt.Dimension(0, 0));
-        return tabs;
-    }
-
-    /**
-     * Swing-only content also used by narrow-panel regression/preview without Bookmap runtime GUI
-     * internals.
-     */
-    static JPanel buildConfigurationPanel(Settings settings, Api api) {
-        JPanel configPanel = new JPanel();
+        StrategyPanel configPanel = new StrategyPanel("Exporter configuration");
         configPanel.setLayout(new BorderLayout(4, 4));
 
-        SettingsFields fields = new SettingsFields();
+        JPanel fields = new JPanel(new GridLayout(0, 1, 4, 4));
 
-        JCheckBox exportMboBox = new JCheckBox("Export MBO events", settings.exportMbo);
-        JCheckBox exportTradesBox = new JCheckBox("Export trade events", settings.exportTrades);
+        JCheckBox exportMboBox =
+                new JCheckBox("Export MBO add / replace / cancel records", settings.exportMbo);
+        JCheckBox exportTradesBox = new JCheckBox("Export trade records", settings.exportTrades);
         fields.add(exportMboBox);
         fields.add(exportTradesBox);
 
+        JPanel outputRow = new JPanel(new BorderLayout(4, 0));
         JTextField outputField =
-                new JTextField(settings.outputDirectory == null ? "" : settings.outputDirectory);
+                new JTextField(
+                        settings.outputDirectory == null ? "" : settings.outputDirectory, 30);
         JButton browseButton = new JButton("Browse...");
-        JPanel outputInput = new JPanel(new BorderLayout(4, 0));
-        outputInput.add(outputField, BorderLayout.CENTER);
-        outputInput.add(browseButton, BorderLayout.EAST);
-        fields.add(settingRow("Output directory (blank = default)", outputInput));
-        JTextField tagField = new JTextField(settings.runTag == null ? "" : settings.runTag);
-        fields.add(settingRow("Run tag", tagField));
+        outputRow.add(new JLabel("Output directory (blank = default): "), BorderLayout.WEST);
+        outputRow.add(outputField, BorderLayout.CENTER);
+        outputRow.add(browseButton, BorderLayout.EAST);
+        fields.add(outputRow);
 
+        JPanel tagRow = new JPanel(new BorderLayout(4, 0));
+        JTextField tagField = new JTextField(settings.runTag == null ? "" : settings.runTag, 30);
+        tagRow.add(new JLabel("Run tag: "), BorderLayout.WEST);
+        tagRow.add(tagField, BorderLayout.CENTER);
+        fields.add(tagRow);
+
+        JPanel queueRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
         JSpinner queueSpinner =
                 new JSpinner(
                         new SpinnerNumberModel(
@@ -612,8 +571,11 @@ public class BookmapOrderflowExporter
                                 MIN_QUEUE_CAPACITY,
                                 MAX_QUEUE_CAPACITY,
                                 10_000));
-        fields.add(settingRow("Journal queue (events)", queueSpinner));
+        queueRow.add(new JLabel("Writer queue capacity: "));
+        queueRow.add(queueSpinner);
+        fields.add(queueRow);
 
+        JPanel flushRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
         JSpinner flushSpinner =
                 new JSpinner(
                         new SpinnerNumberModel(
@@ -624,16 +586,22 @@ public class BookmapOrderflowExporter
                                 MIN_FLUSH_INTERVAL_MS,
                                 MAX_FLUSH_INTERVAL_MS,
                                 500));
-        fields.add(settingRow("Checkpoint interval (ms)", flushSpinner));
+        flushRow.add(new JLabel("Maximum checkpoint interval (ms): "));
+        flushRow.add(flushSpinner);
+        fields.add(flushRow);
 
         JLabel bufferingNote =
                 new JLabel(
-                        "<html>Disk buffer: 4 MiB.<br>Writes when full or at checkpoint.</html>");
+                        "<html>Disk buffer: 4 MiB compressed-output buffer; it writes automatically"
+                            + " when full. The interval below is only the maximum checkpoint"
+                            + " age.</html>");
         fields.add(bufferingNote);
 
         JCheckBox bridgeBox = new JCheckBox("Live Linux bridge (optional)", settings.bridgeEnabled);
         JCheckBox liveJournalBox =
-                new JCheckBox("Responsive live journal", settings.responsiveLiveJournal);
+                new JCheckBox(
+                        "Responsive LIVE journal (overflow invalidates archive)",
+                        settings.responsiveLiveJournal);
         JTextField bindField = new JTextField(settings.bridgeBind, 15);
         JSpinner portSpinner =
                 new JSpinner(new SpinnerNumberModel(settings.bridgePort, 1, 65535, 1));
@@ -644,29 +612,27 @@ public class BookmapOrderflowExporter
                         new SpinnerNumberModel(settings.bridgeQueueCapacity, 1, 5_000_000, 1000));
         fields.add(bridgeBox);
         fields.add(liveJournalBox);
-        liveJournalBox.setToolTipText(
-                "Keep Bookmap responsive: live journal overflow marks the archive invalid instead"
-                        + " of waiting.");
-        fields.add(settingRow("Bind address", bindField));
-        fields.add(settingRow("Market port (TCP)", portSpinner));
-        fields.add(settingRow("Health port (TCP)", healthSpinner));
-        fields.add(settingRow("Bridge queue (events)", bridgeQueueSpinner));
+        JPanel bridgeRow = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        bridgeRow.add(new JLabel("Bind:"));
+        bridgeRow.add(bindField);
+        bridgeRow.add(new JLabel("Market port:"));
+        bridgeRow.add(portSpinner);
+        bridgeRow.add(new JLabel("Health port:"));
+        bridgeRow.add(healthSpinner);
+        fields.add(bridgeRow);
+        JPanel bridgeQueueRow = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        bridgeQueueRow.add(new JLabel("Unacknowledged bridge event capacity:"));
+        bridgeQueueRow.add(bridgeQueueSpinner);
+        fields.add(bridgeQueueRow);
 
         JLabel applyNote =
                 new JLabel(
-                        "<html>Apply restarts the exporter<br>and starts a new output"
-                                + " file.</html>");
+                        "<html>Apply restarts this exporter instance and starts a new output"
+                            + " file.</html>");
         fields.add(applyNote);
 
-        JButton applyButton = new JButton("Apply / restart exporter");
-        JScrollPane configScroll =
-                new JScrollPane(
-                        fields,
-                        JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,
-                        JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
-        configScroll.getVerticalScrollBar().setUnitIncrement(20);
-        configScroll.setMinimumSize(new java.awt.Dimension(0, 0));
-        configPanel.add(configScroll, BorderLayout.CENTER);
+        JButton applyButton = new JButton("Apply settings / restart exporter");
+        configPanel.add(fields, BorderLayout.CENTER);
         configPanel.add(applyButton, BorderLayout.SOUTH);
 
         browseButton.addActionListener(
@@ -704,65 +670,33 @@ public class BookmapOrderflowExporter
                     api.reload();
                 });
 
-        return configPanel;
-    }
+        StrategyPanel statusPanel = new StrategyPanel("Live exporter status");
+        statusPanel.setLayout(new BorderLayout(4, 4));
+        JLabel status = new JLabel();
+        status.setVerticalAlignment(SwingConstants.TOP);
+        statusPanel.add(status, BorderLayout.CENTER);
 
-    /** One labeled control per row, with the editor taking the available panel width. */
-    private static JPanel settingRow(String text, javax.swing.JComponent control) {
-        JPanel row = new JPanel(new BorderLayout(0, 3));
-        JLabel label = new JLabel(text);
-        label.setLabelFor(control);
-        row.add(label, BorderLayout.NORTH);
-        row.add(control, BorderLayout.CENTER);
-        return row;
-    }
+        JPanel buttons = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
+        JButton refreshButton = new JButton("Refresh");
+        JButton openFolderButton = new JButton("Open export folder");
+        buttons.add(refreshButton);
+        buttons.add(openFolderButton);
+        statusPanel.add(buttons, BorderLayout.SOUTH);
 
-    private static final class SettingsFields extends JPanel implements Scrollable {
-        SettingsFields() {
-            setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
-            setBorder(javax.swing.BorderFactory.createEmptyBorder(6, 6, 6, 6));
+        if (instance != null) {
+            instance.statusLabel = status;
+            instance.refreshStatusLabel();
+            refreshButton.addActionListener(e -> instance.refreshStatusLabel());
+            openFolderButton.addActionListener(e -> instance.openOutputFolder());
+        } else {
+            status.setText(
+                    "<html>Enable the exporter for an instrument to see live status.</html>");
         }
 
-        @Override
-        public java.awt.Component add(java.awt.Component child) {
-            if (child instanceof javax.swing.JComponent component) {
-                component.setAlignmentX(LEFT_ALIGNMENT);
-                java.awt.Dimension preferred = component.getPreferredSize();
-                component.setMaximumSize(
-                        new java.awt.Dimension(Integer.MAX_VALUE, preferred.height));
-                component.setMinimumSize(new java.awt.Dimension(0, preferred.height));
-            }
-            super.add(child);
-            super.add(Box.createVerticalStrut(8));
-            return child;
-        }
-
-        @Override
-        public java.awt.Dimension getPreferredScrollableViewportSize() {
-            return new java.awt.Dimension(600, 740);
-        }
-
-        @Override
-        public int getScrollableUnitIncrement(
-                java.awt.Rectangle r, int orientation, int direction) {
-            return 20;
-        }
-
-        @Override
-        public int getScrollableBlockIncrement(
-                java.awt.Rectangle r, int orientation, int direction) {
-            return Math.max(20, r.height - 20);
-        }
-
-        @Override
-        public boolean getScrollableTracksViewportWidth() {
-            return true;
-        }
-
-        @Override
-        public boolean getScrollableTracksViewportHeight() {
-            return false;
-        }
+        boolean enabled = api != null;
+        setEnabledRecursively(configPanel, enabled);
+        setEnabledRecursively(statusPanel, enabled);
+        return new StrategyPanel[] {configPanel, statusPanel};
     }
 
     private static void setEnabledRecursively(java.awt.Component component, boolean enabled) {

@@ -3,10 +3,8 @@ ORDERFLOW v0.5 - UPDATED CONFIGURATION + LIVE BRIDGE SMOKE TEST
 1. Extract this ZIP into a normal folder. Keep all files together.
 2. Close Bookmap and replace its previous exporter JAR with the JAR here.
    Keep one exporter addon installed. Restart Bookmap.
-3. One Orderflow exporter panel now has Configuration and Status tabs.
-   Configuration opens first in a larger 640 x 820 preferred panel and scrolls vertically. Bind address, market port 5555,
-   health port 5556 and bridge queue each have their own labeled row.
-   Apply / restart stays at the bottom outside the scrolling area.
+3. The original Bookmap layout is restored: Exporter configuration and
+   Live exporter status panels, with the original rows and Apply settings button.
 4. On Ubuntu start the existing private receiver, using your Windows LAN IP:
    python -m orderflow_bridge.receiver --host WINDOWS_LAN_IP --port 5555 --health-port 5556
 5. Enable the bridge in Bookmap and Apply/restart for a fresh START.
