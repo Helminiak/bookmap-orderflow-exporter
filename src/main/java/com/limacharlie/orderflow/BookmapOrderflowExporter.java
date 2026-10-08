@@ -19,6 +19,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.zip.GZIPOutputStream;
@@ -75,6 +76,9 @@ public class BookmapOrderflowExporter implements
     private static final int DEFAULT_QUEUE_CAPACITY = 1_000_000;
     private static final int MIN_QUEUE_CAPACITY = 10_000;
     private static final int MAX_QUEUE_CAPACITY = 5_000_000;
+    private static final int DEFAULT_FLUSH_INTERVAL_MS = 1_000;
+    private static final int MIN_FLUSH_INTERVAL_MS = 100;
+    private static final int MAX_FLUSH_INTERVAL_MS = 10_000;
     private static final long STATUS_REFRESH_INTERVAL_NS = 250_000_000L;
     private static final DateTimeFormatter FILE_TS =
             DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss_SSS").withZone(ZoneOffset.UTC);
@@ -84,6 +88,7 @@ public class BookmapOrderflowExporter implements
         public String outputDirectory = "";
         public String runTag = "";
         public int queueCapacity = DEFAULT_QUEUE_CAPACITY;
+        public int flushIntervalMs = DEFAULT_FLUSH_INTERVAL_MS;
         public boolean exportMbo = true;
         public boolean exportTrades = true;
     }
@@ -125,6 +130,9 @@ public class BookmapOrderflowExporter implements
     private BlockingQueue<String> queue;
     private Thread writerThread;
     private int effectiveQueueCapacity = DEFAULT_QUEUE_CAPACITY;
+    private int effectiveFlushIntervalMs = DEFAULT_FLUSH_INTERVAL_MS;
+    private volatile long recordsPersisted = 0L;
+    private volatile long lastFlushEpochMs = 0L;
 
     private volatile JLabel statusLabel;
 
@@ -156,6 +164,7 @@ public class BookmapOrderflowExporter implements
             summaryFile = outputDir.resolve(stem + ".summary.json");
 
             effectiveQueueCapacity = clamp(settings.queueCapacity, MIN_QUEUE_CAPACITY, MAX_QUEUE_CAPACITY);
+            effectiveFlushIntervalMs = clamp(settings.flushIntervalMs, MIN_FLUSH_INTERVAL_MS, MAX_FLUSH_INTERVAL_MS);
             queue = new ArrayBlockingQueue<>(effectiveQueueCapacity);
             startWriter();
 
@@ -192,6 +201,8 @@ public class BookmapOrderflowExporter implements
         unknownCancels = 0L;
         timeReversals = 0L;
         openOrderCount = 0;
+        recordsPersisted = 0L;
+        lastFlushEpochMs = 0L;
         lastMboEvent = "No MBO event received yet";
         lastTradeEvent = "No trade received yet";
         uiMessage = "Initializing";
@@ -398,6 +409,16 @@ public class BookmapOrderflowExporter implements
         queueRow.add(queueSpinner);
         fields.add(queueRow);
 
+        JPanel flushRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
+        JSpinner flushSpinner = new JSpinner(new SpinnerNumberModel(
+                clamp(settings.flushIntervalMs, MIN_FLUSH_INTERVAL_MS, MAX_FLUSH_INTERVAL_MS),
+                MIN_FLUSH_INTERVAL_MS,
+                MAX_FLUSH_INTERVAL_MS,
+                100));
+        flushRow.add(new JLabel("Disk flush interval (ms): "));
+        flushRow.add(flushSpinner);
+        fields.add(flushRow);
+
         JLabel applyNote = new JLabel(
                 "<html>Apply restarts this exporter instance and starts a new output file.</html>");
         fields.add(applyNote);
@@ -427,6 +448,7 @@ public class BookmapOrderflowExporter implements
             settings.outputDirectory = outputField.getText().trim();
             settings.runTag = tagField.getText().trim();
             settings.queueCapacity = ((Number) queueSpinner.getValue()).intValue();
+            settings.flushIntervalMs = ((Number) flushSpinner.getValue()).intValue();
             api.setSettings(settings);
             api.reload();
         });
@@ -523,6 +545,9 @@ public class BookmapOrderflowExporter implements
             b.append("<b>Status:</b> ").append(error == null ? html(uiMessage) : "WRITER ERROR").append("<br/>");
             b.append("<b>Market/replay time:</b> ").append(html(formatMarketTime(marketNs))).append("<br/>");
             b.append("<b>Output:</b> ").append(html(eventFile == null ? "not initialized" : eventFile.toString())).append("<br/>");
+            b.append("<b>On-disk size:</b> ").append(formatFileSize(currentFileSize())).append("<br/>");
+            b.append("<b>Persisted records:</b> ").append(recordsPersisted)
+                    .append(" &nbsp; Last flush: ").append(formatFlushAge()).append("<br/>");
             b.append("<b>Queue:</b> ").append(queueSize).append(" / ").append(queueCapacity)
                     .append(String.format(" (%.2f%%)", fill)).append("<br/><br/>");
 
@@ -547,7 +572,9 @@ public class BookmapOrderflowExporter implements
                     .append(settings != null && settings.exportMbo)
                     .append(", Trades=")
                     .append(settings != null && settings.exportTrades)
-                    .append(", Run tag=")
+                    .append(", Flush=")
+                    .append(effectiveFlushIntervalMs)
+                    .append(" ms, Run tag=")
                     .append(html(effectiveRunTag()));
             if (error != null) {
                 b.append("<br/><b>Writer error:</b> ").append(html(error.toString()));
@@ -565,22 +592,39 @@ public class BookmapOrderflowExporter implements
 
     private void startWriter() {
         writerThread = new Thread(() -> {
+            long flushIntervalNs = TimeUnit.MILLISECONDS.toNanos(effectiveFlushIntervalMs);
+            long nextFlushNs = System.nanoTime() + flushIntervalNs;
             try (BufferedWriter out = new BufferedWriter(
                     new OutputStreamWriter(
                             new GZIPOutputStream(
                                     new BufferedOutputStream(Files.newOutputStream(eventFile), 1 << 20),
-                                    1 << 20),
+                                    1 << 20,
+                                    true),
                             StandardCharsets.UTF_8),
                     1 << 20)) {
                 while (true) {
-                    String line = queue.take();
+                    long waitNs = Math.max(1L, nextFlushNs - System.nanoTime());
+                    String line = queue.poll(waitNs, TimeUnit.NANOSECONDS);
                     if (line == POISON) {
                         break;
                     }
-                    out.write(line);
-                    out.newLine();
+                    if (line != null) {
+                        out.write(line);
+                        out.newLine();
+                        recordsPersisted++;
+                    }
+
+                    long now = System.nanoTime();
+                    if (now >= nextFlushNs) {
+                        out.flush();
+                        lastFlushEpochMs = System.currentTimeMillis();
+                        scheduleStatusRefresh(true);
+                        nextFlushNs = now + flushIntervalNs;
+                    }
                 }
                 out.flush();
+                lastFlushEpochMs = System.currentTimeMillis();
+                scheduleStatusRefresh(true);
             } catch (Throwable t) {
                 writerError.compareAndSet(null, t);
                 uiMessage = "Writer failed";
@@ -686,6 +730,8 @@ public class BookmapOrderflowExporter implements
         booleanField(b, "export_mbo", settings.exportMbo).append(',');
         booleanField(b, "export_trades", settings.exportTrades).append(',');
         numberField(b, "queue_capacity", effectiveQueueCapacity).append(',');
+        numberField(b, "flush_interval_ms", effectiveFlushIntervalMs).append(',');
+        numberField(b, "records_persisted", recordsPersisted).append(',');
         numberField(b, "duplicate_adds", duplicateAdds).append(',');
         numberField(b, "unknown_replaces", unknownReplaces).append(',');
         numberField(b, "unknown_cancels", unknownCancels).append(',');
@@ -734,6 +780,41 @@ public class BookmapOrderflowExporter implements
             return value;
         }
         return value.substring(0, 6) + "…" + value.substring(value.length() - 6);
+    }
+
+    private long currentFileSize() {
+        if (eventFile == null) {
+            return 0L;
+        }
+        try {
+            return Files.exists(eventFile) ? Files.size(eventFile) : 0L;
+        } catch (IOException e) {
+            return 0L;
+        }
+    }
+
+    private static String formatFileSize(long bytes) {
+        if (bytes < 1024L) {
+            return bytes + " B";
+        }
+        double kib = bytes / 1024.0;
+        if (kib < 1024.0) {
+            return String.format("%.1f KiB", kib);
+        }
+        double mib = kib / 1024.0;
+        if (mib < 1024.0) {
+            return String.format("%.2f MiB", mib);
+        }
+        return String.format("%.2f GiB", mib / 1024.0);
+    }
+
+    private String formatFlushAge() {
+        long last = lastFlushEpochMs;
+        if (last <= 0L) {
+            return "pending";
+        }
+        long age = Math.max(0L, System.currentTimeMillis() - last);
+        return age + " ms ago";
     }
 
     private static int clamp(int value, int min, int max) {
