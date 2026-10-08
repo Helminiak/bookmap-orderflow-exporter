@@ -2,6 +2,54 @@
 
 This project keeps the acquisition layer public and versioned so the development path is visible from the original exporter scaffold through later validation-driven changes. Proprietary entry-quality logic belongs in the separate private `orderflow-entry-engine` repository and is intentionally excluded here.
 
+## [0.4.0] - 2026-10-08
+
+### Changed
+
+- Replaced v0.3's explicit uncompressed-payload size flush with a **capacity-driven buffered recorder**.
+- Default maximum checkpoint interval is now **60,000 ms** (60 seconds), configurable from 5 seconds to 5 minutes.
+- Retained a 4 MiB compressed-output `BufferedOutputStream`. It writes to the operating system automatically when full, without waiting for the checkpoint timer.
+- The periodic timer is now a safety/checkpoint flush for residual data rather than the primary high-volume write mechanism.
+- Added counters for bytes and write calls handed by this process to the operating system below the 4 MiB disk buffer.
+- Renamed UI terminology from generic flush timing to **checkpoint interval** to distinguish it from automatic buffer-full writes.
+
+### Why this is closer to Bookmap
+
+Bookmap's public `BookmapRecorderDemo` states that the recorder keeps **internal buffers** and requires `recorder.fini()` at the end so those buffers are written to the file. The public demo does not expose or document an exact internal byte threshold or periodic flush interval.
+
+v0.4 therefore copies the observable architecture rather than inventing a Bookmap constant:
+
+1. accumulate records in memory,
+2. compress continuously,
+3. allow the output buffer to drain automatically when it fills,
+4. perform a much less frequent soft checkpoint,
+5. finalize all remaining buffers on clean stop.
+
+This also matches the historical behavior observed by the project owner on mechanical disks: sparse writes in quiet markets and more continuous disk activity when market data volume was high.
+
+### Defaults
+
+- writer queue: 1,000,000 records
+- compressed-output disk buffer: 4 MiB
+- maximum checkpoint interval: 60 seconds
+- explicit payload-size flush trigger: disabled
+- forced durable `fsync` per checkpoint: none
+
+### Important interpretation
+
+`application_disk_bytes` and `application_disk_write_ops` measure bytes/write calls that the Java process hands to the operating system below the application buffer. They are **not** physical NAND-write measurements. Windows and the SSD controller may still cache, merge, reorder, or coalesce those writes.
+
+### Validation target
+
+Run v0.4 at 60 seconds through both quiet and heavy ES periods and verify:
+
+- quiet periods show few application write operations between checkpoints,
+- heavy periods naturally increase write operations as the 4 MiB output buffer fills,
+- the writer queue remains near zero,
+- persisted/enqueued record counts remain equal,
+- no sequence gaps or writer errors appear,
+- shutdown finalizes the GZIP stream and summary cleanly.
+
 ## [0.3.0] - 2026-10-08
 
 ### Changed
