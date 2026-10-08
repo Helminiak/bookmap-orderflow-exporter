@@ -1,5 +1,11 @@
 # Master engineering handoff — 2026-10-08
 
+## Latest verification checkpoint
+
+Storage-fault source `6dd3e01bdb801b1374066d6b655fd3c3d239a6bc` passed all branch Windows/Ubuntu jobs, 27 Java and 15 Python3.12 tests locally, and six final-JAR Java/Python loopback cases. Its PR Ubuntu job exposed a terminal-ACK test startup timeout before WELCOME; the worker binds asynchronously and the test did not observe readiness. The next test-only correction waits for the health endpoint with a bounded deadline, prevents identical test port selection, and reports publisher status on absent frames. It does not retry terminal delivery or change protocol/production code. Re-run both CI matrices for the new exact head.
+
+Private monitoring/Qwen/receiver-diagnostic checkpoint `16933eac39b1cfcedf1e9563d1fabc5c1b472816` is pushed and exact-head push/PR CI is green. Native candidate installation remains pending a safe window; the live Bookmap session was not changed. Durability, bounded disk-stall shutdown, native REALTIME/soak/DPI and independent ChatGPT review remain release blockers.
+
 ## Active production reliability milestone — 2026-10-08
 
 The user explicitly authorized broader production reliability work after the UI-only milestone. Public acquisition/transport source remains generic; private research/captures stay in the private repository/local validation storage. Baseline source `03319fd`, sanitized evidence checkpoint `cd5c09f825652a7b295d7794da111866aff95e9e`.

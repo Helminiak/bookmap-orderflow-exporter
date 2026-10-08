@@ -9,8 +9,16 @@ class BridgeHealthQueryTest {
     @Test
     void terminalAckWithinRetentionBudgetCompletesSession() throws Exception {
         int market = ExporterTest.freePort(), health = ExporterTest.freePort();
+        while (health == market) health = ExporterTest.freePort();
         var bridge = new LiveBridge("127.0.0.1", market, health, 1, "SYNTH", .25, () -> "{}");
         try (var context = new ZContext()) {
+            // Binding happens on the worker. Wait for observable readiness, not a CI scheduling
+            // guess.
+            String ready = null;
+            long readyDeadline = System.nanoTime() + 10_000_000_000L;
+            while (ready == null && !bridge.invalid() && System.nanoTime() < readyDeadline)
+                ready = BridgeHealthQuery.query("127.0.0.1", health, 200);
+            assertNotNull(ready, bridge.status());
             assertTrue(bridge.offer(new CanonicalEvent(1, 1, () -> "{\"seq\":1}")));
             assertTrue(bridge.offerTerminal(new CanonicalEvent(2, 2, () -> "{\"seq\":2}")));
             var receiver = context.createSocket(SocketType.DEALER);
@@ -18,9 +26,15 @@ class BridgeHealthQueryTest {
             receiver.setReceiveTimeOut(2000);
             receiver.connect("tcp://127.0.0.1:" + market);
             receiver.send("HELLO owner 0");
-            assertTrue(receiver.recvStr().contains("WELCOME"));
-            assertTrue(receiver.recvStr().contains("\"seq\":1"));
-            assertTrue(receiver.recvStr().contains("\"seq\":2"));
+            String welcome = receiver.recvStr(),
+                    first = receiver.recvStr(),
+                    terminal = receiver.recvStr();
+            assertNotNull(welcome, bridge.status());
+            assertNotNull(first, bridge.status());
+            assertNotNull(terminal, bridge.status());
+            assertTrue(welcome.contains("WELCOME"));
+            assertTrue(first.contains("\"seq\":1"));
+            assertTrue(terminal.contains("\"seq\":2"));
             receiver.send("ACK owner 2");
             long deadline = System.nanoTime() + 2_000_000_000L;
             while (bridge.depth() != 0 && System.nanoTime() < deadline) Thread.sleep(1);
