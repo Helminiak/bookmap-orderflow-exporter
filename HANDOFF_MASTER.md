@@ -1,6 +1,16 @@
 # Master engineering handoff — 2026-10-08
 
-Latest UI follow-up: [v0.5a whole-page preview](docs/UI_V05A_2026-10-08.md). The owner reports the previous repair disables successfully with a short pause. v0.5a moves the complete Configuration form and Apply into Bookmap's outer scrolling page and adds original Information/help content. Runtime/defaults are unchanged; actual new-preview Windows Bookmap acceptance remains pending. [Marketplace draft](docs/MARKETPLACE_DRAFT.md) is preparation only, not submission or release approval. Older state below is historical.
+## Active production reliability milestone — 2026-10-08
+
+The user explicitly authorized broader production reliability work after the UI-only milestone. Public acquisition/transport source remains generic; private research/captures stay in the private repository/local validation storage. Baseline source `03319fd`, sanitized evidence checkpoint `cd5c09f825652a7b295d7794da111866aff95e9e`.
+
+Shutdown regression is now reproduced on defective source and passes on the lifecycle candidate: accepted callback cannot be overtaken by STOP, late callbacks cannot mutate book/sequence, writer checks continuity, and summary reconciles actual persisted records. See [regression evidence](docs/validation/2026-10-08-shutdown-regression.md). Required JDK17/Gradle8.10 clean build, JAR and smoke bundle pass; 20 Java tests and 15 Python3.12 validator tests pass locally. Windows/Ubuntu CI for this next pushed head must be checked; native installed JAR is still the older baseline. No Bookmap restart or broker changes were made.
+
+Visible localhost development dashboard is running on the actual Ubuntu machine (port 8766), committed in PRIVATE repository draft PR5, `a32caaf1db0a9f7e322250bad6a1a946ad1d7d3e`. Four monitor tests pass. Monitor heartbeat is distinct from active development. Start/stop instructions are in that private repository's tools/development/README.md.
+
+Local Qwen endpoint/model-list and small request were verified (162 tokens observed). First bounded shutdown review produced no answer; one smaller retry is in progress. Escalation to Codex is explicit because this is a confirmed concurrency/data-integrity failure. Independent reliability sign-off remains pending.
+
+Next: independent exact-diff review of the shutdown fix, then a separate transport milestone eliminating receiver waits from acquisition callbacks and repairing terminal backlog/drain reporting. Historical bridge/journal waits and potentially lengthy synchronous stop remain open; the candidate is not certified bounded under stalls. REALTIME, full-session soak, DPI125/150, ordinary customer hardware, Python3.14 compatibility and Marketplace readiness gates remain open. Test exporter/receiver are stopped; Bookmap stays live and connected. Keep all PRs draft/unmerged.
 
 ## Current repair after owner rejection
 

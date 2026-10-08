@@ -1,4 +1,4 @@
-> Current candidate repairs host collapse and shutdown backpressure/cleanup after owner rejected fb77a37; see [repair](BOOKMAP_HOST_REPAIR_2026-10-08.md). Native corrected Bookmap acceptance remains pending.
+> Production milestone: [native shutdown evidence](validation/2026-10-08-native-shutdown-failure.md) confirms a missing sequence before STOP despite a healthy summary and bridge overflow at shutdown. These block release acceptance. Current-layout controls were inspected in Windows Bookmap; native 125%/150% and REALTIME/soak remain open. The host repair described below is historical context, not certification of shutdown integrity.
 
 Latest UI follow-up: [v0.5a whole-page preview](UI_V05A_2026-10-08.md). The owner reports the previous repair disables successfully with a short pause. v0.5a moves the complete Configuration form and Apply into Bookmap's outer scrolling page and adds original Information/help content. Runtime/defaults are unchanged; actual new-preview Windows Bookmap acceptance remains pending. [Marketplace draft](MARKETPLACE_DRAFT.md) is preparation only, not submission or release approval. Older state below is historical.
 
@@ -25,3 +25,5 @@ All issues were checked for duplicates; none existed before this closeout. Sever
 | R-13 | M / licensed inputs incomplete | One summary lacks paired archive; overlapping captures; no full BMF inventory or private candidate recertification | Retain originals locally, hashes/date/alias/build metadata; overlap-aware research lineage | [#12](https://github.com/Helminiak/bookmap-orderflow-exporter/issues/12) |
 
 No open risk is silently classified as working. Latest source d447a69 has green Windows/Ubuntu CI. PR #6 is draft and merge-clean but not release-approved; unrelated governance PR #1 stays unmerged. Private receiver availability requires separate PRIVATE PR #4 and authorized deployment. No exchange/execution connectivity guarantee exists here.
+
+- Shutdown race now has a failing-before/passing-after controlled regression; native reproduction of the corrected source is pending. Callback admission serialization does not yet bound historical waits or move synchronous shutdown off the Bookmap callback. See validation/2026-10-08-shutdown-regression.md.

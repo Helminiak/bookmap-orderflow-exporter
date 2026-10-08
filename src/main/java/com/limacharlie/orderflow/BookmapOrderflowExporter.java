@@ -120,6 +120,7 @@ public class BookmapOrderflowExporter
     private long firstMarketNs = Long.MIN_VALUE;
     private long lastMarketNs = Long.MIN_VALUE;
     private volatile boolean realtimePhase = false;
+    private final Object lifecycleLock = new Object();
     private volatile boolean stopped = false;
 
     private volatile long mboAdds = 0L;
@@ -271,17 +272,19 @@ public class BookmapOrderflowExporter
     public void onTimestamp(long nanoseconds) {
         long callbackStart = System.nanoTime();
         try {
-            if (marketNs != 0L && nanoseconds < marketNs) {
-                timeReversals++;
-                emitControl("TIME_REVERSAL", "from=" + marketNs + ",to=" + nanoseconds);
+            synchronized (lifecycleLock) {
+                if (stopped) return;
+                if (marketNs != 0L && nanoseconds < marketNs) {
+                    timeReversals++;
+                    emitControl("TIME_REVERSAL", "from=" + marketNs + ",to=" + nanoseconds);
+                }
+                marketNs = nanoseconds;
+                if (firstMarketNs == Long.MIN_VALUE) {
+                    firstMarketNs = nanoseconds;
+                }
+                lastMarketNs = nanoseconds;
+                scheduleStatusRefresh(false);
             }
-            marketNs = nanoseconds;
-            if (firstMarketNs == Long.MIN_VALUE) {
-                firstMarketNs = nanoseconds;
-            }
-            lastMarketNs = nanoseconds;
-            scheduleStatusRefresh(false);
-
         } finally {
             callbackMetrics.record(System.nanoTime() - callbackStart);
         }
@@ -291,27 +294,29 @@ public class BookmapOrderflowExporter
     public void send(String orderId, boolean isBid, int price, int size) {
         long callbackStart = System.nanoTime();
         try {
-            OrderState prior = orders.put(orderId, new OrderState(isBid, price, size));
-            openOrderCount = orders.size();
-            if (prior != null) {
-                duplicateAdds++;
+            synchronized (lifecycleLock) {
+                if (stopped) return;
+                OrderState prior = orders.put(orderId, new OrderState(isBid, price, size));
+                openOrderCount = orders.size();
+                if (prior != null) {
+                    duplicateAdds++;
+                }
+                mboAdds++;
+                lastMboDisplay =
+                        () ->
+                                "ADD "
+                                        + sideText(isBid)
+                                        + " "
+                                        + formatPriceLevel(price)
+                                        + " x"
+                                        + size
+                                        + " id="
+                                        + abbreviate(orderId);
+                if (settings.exportMbo) {
+                    emitMbo("MBO_ADD", orderId, isBid ? "BID" : "ASK", price, size, prior != null);
+                }
+                scheduleStatusRefresh(false);
             }
-            mboAdds++;
-            lastMboDisplay =
-                    () ->
-                            "ADD "
-                                    + sideText(isBid)
-                                    + " "
-                                    + formatPriceLevel(price)
-                                    + " x"
-                                    + size
-                                    + " id="
-                                    + abbreviate(orderId);
-            if (settings.exportMbo) {
-                emitMbo("MBO_ADD", orderId, isBid ? "BID" : "ASK", price, size, prior != null);
-            }
-            scheduleStatusRefresh(false);
-
         } finally {
             callbackMetrics.record(System.nanoTime() - callbackStart);
         }
@@ -321,36 +326,38 @@ public class BookmapOrderflowExporter
     public void replace(String orderId, int price, int size) {
         long callbackStart = System.nanoTime();
         try {
-            OrderState prior = orders.get(orderId);
-            String side = "UNKNOWN";
-            boolean anomaly = false;
-            if (prior == null) {
-                unknownReplaces++;
-                anomaly = true;
-            } else {
-                side = prior.bid() ? "BID" : "ASK";
-                orders.put(orderId, new OrderState(prior.bid(), price, size));
+            synchronized (lifecycleLock) {
+                if (stopped) return;
+                OrderState prior = orders.get(orderId);
+                String side = "UNKNOWN";
+                boolean anomaly = false;
+                if (prior == null) {
+                    unknownReplaces++;
+                    anomaly = true;
+                } else {
+                    side = prior.bid() ? "BID" : "ASK";
+                    orders.put(orderId, new OrderState(prior.bid(), price, size));
+                }
+                openOrderCount = orders.size();
+                mboReplaces++;
+                final String displaySide = side;
+                final boolean displayAnomaly = anomaly;
+                lastMboDisplay =
+                        () ->
+                                "REPLACE "
+                                        + displaySide
+                                        + " "
+                                        + formatPriceLevel(price)
+                                        + " x"
+                                        + size
+                                        + " id="
+                                        + abbreviate(orderId)
+                                        + (displayAnomaly ? " [UNKNOWN ORDER]" : "");
+                if (settings.exportMbo) {
+                    emitMbo("MBO_REPLACE", orderId, side, price, size, anomaly);
+                }
+                scheduleStatusRefresh(false);
             }
-            openOrderCount = orders.size();
-            mboReplaces++;
-            final String displaySide = side;
-            final boolean displayAnomaly = anomaly;
-            lastMboDisplay =
-                    () ->
-                            "REPLACE "
-                                    + displaySide
-                                    + " "
-                                    + formatPriceLevel(price)
-                                    + " x"
-                                    + size
-                                    + " id="
-                                    + abbreviate(orderId)
-                                    + (displayAnomaly ? " [UNKNOWN ORDER]" : "");
-            if (settings.exportMbo) {
-                emitMbo("MBO_REPLACE", orderId, side, price, size, anomaly);
-            }
-            scheduleStatusRefresh(false);
-
         } finally {
             callbackMetrics.record(System.nanoTime() - callbackStart);
         }
@@ -360,40 +367,42 @@ public class BookmapOrderflowExporter
     public void cancel(String orderId) {
         long callbackStart = System.nanoTime();
         try {
-            OrderState prior = orders.remove(orderId);
-            openOrderCount = orders.size();
-            String side = "UNKNOWN";
-            Integer price = null;
-            Integer size = null;
-            boolean anomaly = false;
-            if (prior == null) {
-                unknownCancels++;
-                anomaly = true;
-            } else {
-                side = prior.bid() ? "BID" : "ASK";
-                price = prior.priceLevel();
-                size = prior.size();
+            synchronized (lifecycleLock) {
+                if (stopped) return;
+                OrderState prior = orders.remove(orderId);
+                openOrderCount = orders.size();
+                String side = "UNKNOWN";
+                Integer price = null;
+                Integer size = null;
+                boolean anomaly = false;
+                if (prior == null) {
+                    unknownCancels++;
+                    anomaly = true;
+                } else {
+                    side = prior.bid() ? "BID" : "ASK";
+                    price = prior.priceLevel();
+                    size = prior.size();
+                }
+                mboCancels++;
+                final String displaySide = side;
+                final Integer displayPrice = price, displaySize = size;
+                final boolean displayAnomaly = anomaly;
+                lastMboDisplay =
+                        () ->
+                                "CANCEL "
+                                        + displaySide
+                                        + (displayPrice == null
+                                                ? ""
+                                                : " " + formatPriceLevel(displayPrice))
+                                        + (displaySize == null ? "" : " x" + displaySize)
+                                        + " id="
+                                        + abbreviate(orderId)
+                                        + (displayAnomaly ? " [UNKNOWN ORDER]" : "");
+                if (settings.exportMbo) {
+                    emitMboNullable("MBO_CANCEL", orderId, side, price, size, anomaly);
+                }
+                scheduleStatusRefresh(false);
             }
-            mboCancels++;
-            final String displaySide = side;
-            final Integer displayPrice = price, displaySize = size;
-            final boolean displayAnomaly = anomaly;
-            lastMboDisplay =
-                    () ->
-                            "CANCEL "
-                                    + displaySide
-                                    + (displayPrice == null
-                                            ? ""
-                                            : " " + formatPriceLevel(displayPrice))
-                                    + (displaySize == null ? "" : " x" + displaySize)
-                                    + " id="
-                                    + abbreviate(orderId)
-                                    + (displayAnomaly ? " [UNKNOWN ORDER]" : "");
-            if (settings.exportMbo) {
-                emitMboNullable("MBO_CANCEL", orderId, side, price, size, anomaly);
-            }
-            scheduleStatusRefresh(false);
-
         } finally {
             callbackMetrics.record(System.nanoTime() - callbackStart);
         }
@@ -403,61 +412,67 @@ public class BookmapOrderflowExporter
     public void onTrade(double price, int size, TradeInfo tradeInfo) {
         long callbackStart = System.nanoTime();
         try {
-            trades++;
-            final boolean bidAggressor = tradeInfo.isBidAggressor,
-                    executionStart = tradeInfo.isExecutionStart;
-            final boolean executionEnd = tradeInfo.isExecutionEnd, otc = tradeInfo.isOtc;
-            final String aggressorId = tradeInfo.aggressorOrderId,
-                    passiveId = tradeInfo.passiveOrderId;
-            lastTradeDisplay =
-                    () ->
-                            (bidAggressor ? "BUY " : "SELL ")
-                                    + formatPriceLevel(price)
-                                    + " x"
-                                    + size
-                                    + " aggr="
-                                    + abbreviate(aggressorId)
-                                    + " passive="
-                                    + abbreviate(passiveId);
+            synchronized (lifecycleLock) {
+                if (stopped) return;
+                trades++;
+                final boolean bidAggressor = tradeInfo.isBidAggressor,
+                        executionStart = tradeInfo.isExecutionStart;
+                final boolean executionEnd = tradeInfo.isExecutionEnd, otc = tradeInfo.isOtc;
+                final String aggressorId = tradeInfo.aggressorOrderId,
+                        passiveId = tradeInfo.passiveOrderId;
+                lastTradeDisplay =
+                        () ->
+                                (bidAggressor ? "BUY " : "SELL ")
+                                        + formatPriceLevel(price)
+                                        + " x"
+                                        + size
+                                        + " aggr="
+                                        + abbreviate(aggressorId)
+                                        + " passive="
+                                        + abbreviate(passiveId);
 
-            if (settings.exportTrades) {
-                long seq = nextSequence();
-                final long eventNs = marketNs;
-                final String eventPhase = phase(), eventAlias = alias;
-                final double eventPips = pips;
-                enqueue(
-                        new CanonicalEvent(
-                                seq,
-                                eventNs,
-                                () -> {
-                                    StringBuilder b = new StringBuilder(512);
-                                    b.append('{');
-                                    field(b, "schema", SCHEMA).append(',');
-                                    numberField(b, "seq", seq).append(',');
-                                    numberField(b, "market_ns", eventNs).append(',');
-                                    field(b, "phase", eventPhase).append(',');
-                                    field(b, "alias", eventAlias).append(',');
-                                    field(b, "event", "TRADE").append(',');
-                                    field(b, "aggressor_side", bidAggressor ? "BUY" : "SELL")
-                                            .append(',');
-                                    rawNumberField(b, "price_level", Double.toString(price))
-                                            .append(',');
-                                    rawNumberField(b, "price", Double.toString(price * eventPips))
-                                            .append(',');
-                                    numberField(b, "size", size).append(',');
-                                    nullableStringField(b, "aggressor_order_id", aggressorId)
-                                            .append(',');
-                                    nullableStringField(b, "passive_order_id", passiveId)
-                                            .append(',');
-                                    booleanField(b, "execution_start", executionStart).append(',');
-                                    booleanField(b, "execution_end", executionEnd).append(',');
-                                    booleanField(b, "otc", otc);
-                                    b.append('}');
-                                    return b.toString();
-                                }));
+                if (settings.exportTrades) {
+                    long seq = nextSequence();
+                    final long eventNs = marketNs;
+                    final String eventPhase = phase(), eventAlias = alias;
+                    final double eventPips = pips;
+                    enqueue(
+                            new CanonicalEvent(
+                                    seq,
+                                    eventNs,
+                                    () -> {
+                                        StringBuilder b = new StringBuilder(512);
+                                        b.append('{');
+                                        field(b, "schema", SCHEMA).append(',');
+                                        numberField(b, "seq", seq).append(',');
+                                        numberField(b, "market_ns", eventNs).append(',');
+                                        field(b, "phase", eventPhase).append(',');
+                                        field(b, "alias", eventAlias).append(',');
+                                        field(b, "event", "TRADE").append(',');
+                                        field(b, "aggressor_side", bidAggressor ? "BUY" : "SELL")
+                                                .append(',');
+                                        rawNumberField(b, "price_level", Double.toString(price))
+                                                .append(',');
+                                        rawNumberField(
+                                                        b,
+                                                        "price",
+                                                        Double.toString(price * eventPips))
+                                                .append(',');
+                                        numberField(b, "size", size).append(',');
+                                        nullableStringField(b, "aggressor_order_id", aggressorId)
+                                                .append(',');
+                                        nullableStringField(b, "passive_order_id", passiveId)
+                                                .append(',');
+                                        booleanField(b, "execution_start", executionStart)
+                                                .append(',');
+                                        booleanField(b, "execution_end", executionEnd).append(',');
+                                        booleanField(b, "otc", otc);
+                                        b.append('}');
+                                        return b.toString();
+                                    }));
+                }
+                scheduleStatusRefresh(false);
             }
-            scheduleStatusRefresh(false);
-
         } finally {
             callbackMetrics.record(System.nanoTime() - callbackStart);
         }
@@ -467,12 +482,14 @@ public class BookmapOrderflowExporter
     public void onRealtimeStart() {
         long callbackStart = System.nanoTime();
         try {
-            if (bridge != null) bridge.finishHistorical();
-            realtimePhase = true;
-            emitControl("REALTIME_START", "Bookmap historical catch-up completed");
-            uiMessage = "Realtime";
-            scheduleStatusRefresh(true);
-
+            synchronized (lifecycleLock) {
+                if (stopped) return;
+                if (bridge != null) bridge.finishHistorical();
+                realtimePhase = true;
+                emitControl("REALTIME_START", "Bookmap historical catch-up completed");
+                uiMessage = "Realtime";
+                scheduleStatusRefresh(true);
+            }
         } finally {
             callbackMetrics.record(System.nanoTime() - callbackStart);
         }
@@ -480,14 +497,17 @@ public class BookmapOrderflowExporter
 
     @Override
     public void stop() {
-        if (stopped) {
-            return;
-        }
-        stopped = true;
-        uiMessage = "Stopping";
-        scheduleStatusRefresh(true);
+        boolean owner = false;
         try {
-            if (writerError.get() == null || realtimePhase) emitControl("STOP", "module stopped");
+            synchronized (lifecycleLock) {
+                if (stopped) return;
+                stopped = true;
+                owner = true;
+                uiMessage = "Stopping";
+                scheduleStatusRefresh(true);
+                if (writerError.get() == null || realtimePhase)
+                    emitControl("STOP", "module stopped");
+            }
             long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(30);
             while (writerThread.isAlive() && !queue.offer(POISON)) {
                 if (System.nanoTime() > deadline)
@@ -497,6 +517,15 @@ public class BookmapOrderflowExporter
             writerThread.join(30_000L);
             if (writerThread.isAlive()) {
                 throw new IllegalStateException("Writer did not terminate within 30 seconds");
+            }
+            if (recordsPersisted != sequence) {
+                writerError.compareAndSet(
+                        null,
+                        new IllegalStateException(
+                                "Journal count mismatch: allocated="
+                                        + sequence
+                                        + ", persisted="
+                                        + recordsPersisted));
             }
             writeSummary();
             Throwable error = writerError.get();
@@ -516,7 +545,7 @@ public class BookmapOrderflowExporter
             scheduleStatusRefresh(true);
             throw new IllegalStateException("Unable to write exporter summary", e);
         } finally {
-            if (bridge != null) bridge.close();
+            if (owner && bridge != null) bridge.close();
         }
     }
 
@@ -983,6 +1012,13 @@ public class BookmapOrderflowExporter
                                         break;
                                     }
                                     if (event != null) {
+                                        if (event.seq != recordsPersisted + 1) {
+                                            throw new IOException(
+                                                    "Journal sequence discontinuity: expected="
+                                                            + (recordsPersisted + 1)
+                                                            + ", received="
+                                                            + event.seq);
+                                        }
                                         String line = event.json();
                                         out.write(line);
                                         out.newLine();
@@ -1218,7 +1254,8 @@ public class BookmapOrderflowExporter
         field(b, "event_file", eventFile.getFileName().toString()).append(',');
         booleanField(b, "writer_ok", valid).append(',');
         nullableStringField(b, "writer_error", error == null ? null : error.toString()).append(',');
-        numberField(b, "total_records", sequence).append(',');
+        numberField(b, "total_records", recordsPersisted).append(',');
+        numberField(b, "last_allocated_seq", sequence).append(',');
         numberField(b, "mbo_add_received", mboAdds).append(',');
         numberField(b, "mbo_replace_received", mboReplaces).append(',');
         numberField(b, "mbo_cancel_received", mboCancels).append(',');
