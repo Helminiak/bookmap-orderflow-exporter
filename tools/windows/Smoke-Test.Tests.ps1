@@ -59,6 +59,10 @@ try {
     # Last fixture has stalled ACKs; paths must resolve and produce a report, even on FAIL.
     if ($LASTEXITCODE -ne 1) { throw 'Default path invocation did not execute smoke validation' }
     if (-not (Get-ChildItem $temp -Filter 'smoke-test-*.json')) { throw 'Default report path was not resolved' }
+    Set-Content $fakeJava "@echo off`r`necho openjdk version `"25.0.2`" 1>&2`r`nexit /b 0`r`n" -Encoding ASCII
+    if ((Find-JavaRuntime @((Join-Path $temp 'missing-java.exe'), $fakeJava)) -ne $fakeJava) { throw 'Java 25 discovery failed' }
+    Set-Content $fakeJava "@echo off`r`necho java version `"1.8.0`" 1>&2`r`nexit /b 0`r`n" -Encoding ASCII
+    if (Find-JavaRuntime @($fakeJava)) { throw 'Accepted old Java runtime' }
     $reply = New-Sample | ConvertTo-Json -Compress -Depth 6
     Set-Content $fakeJava ("@echo off`r`necho $reply`r`nexit /b 0`r`n") -Encoding ASCII
     $resolved = Resolve-LocalHealthHost $fakeJava $dummyJar 5556 @('192.168.50.20')

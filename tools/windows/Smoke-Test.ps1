@@ -70,16 +70,55 @@ function Resolve-LocalHealthHost {
     return $null
 }
 
+function Find-JavaRuntime {
+    param([string[]]$Candidates)
+    if (-not $Candidates) {
+        $Candidates = @()
+        foreach ($root in @($env:ProgramW6432, $env:ProgramFiles, ${env:ProgramFiles(x86)}) | Select-Object -Unique) {
+            if (-not $root) { continue }
+            $Candidates += Join-Path $root 'Bookmap\jre\bin\java.exe'
+            $Candidates += Join-Path $root 'Bookmap\runtime\bin\java.exe'
+        }
+        $Candidates += 'C:\Bookmap\jre\bin\java.exe'
+        if ($env:JAVA_HOME) { $Candidates += Join-Path $env:JAVA_HOME 'bin\java.exe' }
+        $command = Get-Command java.exe -ErrorAction SilentlyContinue
+        if ($command) { $Candidates += $command.Source }
+        foreach ($root in @($env:ProgramW6432, $env:ProgramFiles) | Select-Object -Unique) {
+            if (-not $root) { continue }
+            foreach ($vendor in 'Java','Eclipse Adoptium','Microsoft','Amazon Corretto') {
+                $folder = Join-Path $root $vendor
+                if (Test-Path -LiteralPath $folder -PathType Container) {
+                    foreach ($install in Get-ChildItem -LiteralPath $folder -Directory -ErrorAction SilentlyContinue) {
+                        $Candidates += Join-Path $install.FullName 'bin\java.exe'
+                    }
+                }
+            }
+        }
+    }
+    foreach ($candidate in $Candidates | Select-Object -Unique) {
+        if (-not $candidate -or -not (Test-Path -LiteralPath $candidate -PathType Leaf)) { continue }
+        # Java writes its version to stderr. Do not turn that normal output into a fatal error.
+        $savedPreference = $ErrorActionPreference
+        try {
+            $ErrorActionPreference = 'Continue'
+            $version = (& $candidate -version 2>&1 | Out-String)
+            if ($LASTEXITCODE -eq 0 -and $version -match 'version "(\d+)(?:\.(\d+))?') {
+                $major = [int]$Matches[1]
+                if ($major -ge 17) { return $candidate }
+            }
+        } catch { } finally { $ErrorActionPreference = $savedPreference }
+    }
+    return $null
+}
+
 function Invoke-BridgeSmokeTest {
     $localAddresses = @(Get-LocalLanAddresses)
     Write-Host ("Windows LAN IP(s): " + ($localAddresses -join ', ')) -ForegroundColor Cyan
     if (-not (Test-Path -LiteralPath $Jar -PathType Leaf)) { throw "Put the updated exporter JAR beside Smoke-Test.bat. Missing: $Jar" }
     if (-not $JavaPath) {
-        if ($env:JAVA_HOME -and (Test-Path -LiteralPath (Join-Path $env:JAVA_HOME 'bin/java.exe'))) {
-            $JavaPath = Join-Path $env:JAVA_HOME 'bin/java.exe'
-        } elseif (Get-Command java -ErrorAction SilentlyContinue) {
-            $JavaPath = (Get-Command java).Source
-        } elseif (-not $NoPrompt) {
+        $JavaPath = Find-JavaRuntime
+        if ($JavaPath) { Write-Host "Using Java: $JavaPath" -ForegroundColor Cyan }
+        elseif (-not $NoPrompt) {
             $JavaPath = (Read-Host 'Full path to Java 17+ java.exe (Bookmap runtime or installed Java)').Trim('"')
         }
     }

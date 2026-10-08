@@ -572,7 +572,7 @@ public class BookmapOrderflowExporter
         tabs.addTab("Configuration", configPanel);
         tabs.addTab("Status", statusScroll);
         tabs.setSelectedIndex(0);
-        tabs.setPreferredSize(new java.awt.Dimension(280, 440));
+        tabs.setPreferredSize(new java.awt.Dimension(640, 820));
         tabs.setMinimumSize(new java.awt.Dimension(0, 0));
         return tabs;
     }
@@ -739,7 +739,7 @@ public class BookmapOrderflowExporter
 
         @Override
         public java.awt.Dimension getPreferredScrollableViewportSize() {
-            return new java.awt.Dimension(280, 400);
+            return new java.awt.Dimension(600, 740);
         }
 
         @Override

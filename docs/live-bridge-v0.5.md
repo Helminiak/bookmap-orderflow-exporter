@@ -64,7 +64,7 @@ New-NetFirewallRule -DisplayName "Orderflow v0.5 LAN" -Direction Inbound -Action
 7. Run the same short replay with bridge disabled/enabled and compare Bookmap elapsed replay time, CPU and UI responsiveness. Record p95/p99/max callback duration, queue high water, source/receiver rates and journal validity. Repeat at accelerated replay rates. Preferred slowdown <3%; 3–5% only if responsive; >5% requires optimization, >10% is unacceptable. No such application slowdown result has been measured here.
 8. Stop cleanly and validate the new journal plus summary with `python tools/validate_export.py CAPTURE.ndjson.gz --summary CAPTURE.summary.json`. Preserve real captures locally. If INVALID, stop downstream use and start a fresh exporter/receiver session; increasing capacity alone cannot repair a lost book history.
 
-## Narrow configuration panel and Windows smoke launcher
+## Configuration panel and Windows smoke launcher
 
 The follow-up layout puts each labeled setting on its own row, fits the available width, and adds vertical scrolling. Bind, market port, health port and bridge queue remain reachable in a 240-pixel-wide test panel. Apply/restart is outside the scrolling area.
 
@@ -89,3 +89,8 @@ Historical callbacks may wait for bridge ACK capacity for up to ten seconds per 
 A receiver that has accepted zero events may re-arm for a different healthy publisher session after connecting to an already-invalid session. Once even START has been accepted, publisher-session changes continue to fail closed. Restart that receiver before applying the exporter.
 
 The Windows helper resolves default JAR/report paths after parameter binding. Run the BAT, not the PS1 by double-click; the BAT keeps results visible.
+
+
+The exporter tabs now request a 640 × 820 panel (600 × 740 configuration viewport) to restore a larger settings view; Bookmap controls the actual available window size. Width tracking, scrolling and the fixed Apply button remain. The BAT checks Bookmap's bundled Java first, then JAVA_HOME, PATH and common vendor folders. Automatic candidates must report Java 17+; a manually supplied -JavaPath remains available.
+
+On 2026-10-08 the owner reported the Linux receiver displayed HEALTHY and the Windows BAT displayed CONNECTED/PASS with 57,771 new events. This establishes a user-reported physical LAN smoke-test success. The saved smoke report has not been reviewed here, and application slowdown/load acceptance is still separate.

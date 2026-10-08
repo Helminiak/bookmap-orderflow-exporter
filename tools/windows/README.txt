@@ -4,7 +4,7 @@ ORDERFLOW v0.5 - UPDATED CONFIGURATION + LIVE BRIDGE SMOKE TEST
 2. Close Bookmap and replace its previous exporter JAR with the JAR here.
    Keep one exporter addon installed. Restart Bookmap.
 3. One Orderflow exporter panel now has Configuration and Status tabs.
-   Configuration opens first and scrolls vertically. Bind address, market port 5555,
+   Configuration opens first in a larger 640 x 820 preferred panel and scrolls vertically. Bind address, market port 5555,
    health port 5556 and bridge queue each have their own labeled row.
    Apply / restart stays at the bottom outside the scrolling area.
 4. On Ubuntu start the existing private receiver, using your Windows LAN IP:
@@ -15,7 +15,9 @@ ORDERFLOW v0.5 - UPDATED CONFIGURATION + LIVE BRIDGE SMOKE TEST
 6. Do not double-click the PS1 helper directly. Double-click Smoke-Test.bat ON THE WINDOWS BOOKMAP MACHINE. Press Enter
    after Ubuntu shows HEALTHY and Bookmap is receiving/replaying events.
 
-Java 17+ must be available. If not found, the launcher asks for the full
+Java 17+ must be available. The launcher automatically checks Bookmap runtimes,
+JAVA_HOME, PATH and common Java installation folders, skipping older Java.
+If not found, the launcher asks for the full
 path to java.exe (an appropriate Bookmap runtime or installed Java).
 No Windows Python installation or administrator access is needed.
 The script never changes your firewall or registers another market receiver.
