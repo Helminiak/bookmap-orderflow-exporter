@@ -14,7 +14,7 @@ The DEALER sends one UTF-8 frame: `HELLO <receiver-id> <last-validated-seq>` or 
 
 Each EVENT envelope contains `type`, `protocol: orderflow-live-v0.1`, `session`, `sent_epoch_ns`, `replay`, and `event`. **The nested event is exactly the journal's `bookmap-orderflow-v0.1` JSON object**, including control lifecycle, nullable IDs, execution markers, anomaly fields and prices. No separate historical/live market contract. `market_ns` is market data, never a transport delay. `sent_epoch_ns` is millisecond-resolution sender wall time; reported lag is approximate and depends on synchronized Windows/Linux clocks.
 
-The receiver ACKs only validated events. Maximum in-flight window: 256 events. Socket send/receive high-water marks: 512 messages. All socket creation, reads, sends and closure happen on the publisher worker. Sends use DONTWAIT. An unexpected send failure invalidates the bridge rather than promising continuity.
+The receiver ACKs only validated events. Maximum in-flight window: 256 events. Socket send/receive high-water marks: 512 messages. All socket creation, reads, sends and closure happen on the publisher worker. Sends use DONTWAIT. A send failure pauses delivery and retains unacknowledged events for the same receiver to resume with HELLO. Overflow, an invalid ACK or a different receiver identity still invalidates continuity.
 
 ## Bounds, failure and recovery
 
@@ -23,7 +23,7 @@ Defaults: bridge disabled; bind `0.0.0.0`; outbound capacity **100,000 unacknowl
 Callback offers use a CAS capacity reservation and a concurrent queue, without queue locks, waiting, sockets, disk or compression. The JVM/OS can still pause threads (allocation, GC, scheduling); this is not a hard-real-time guarantee.
 
 - No receiver: retain START and subsequent events until the buffer fills. Linux should start before enabling/restarting the exporter.
-- Same receiver connection interruption: unacknowledged events stay bounded; HELLO resumes from validated seq and replays retained in-flight events. Exact retained duplicates marked `replay` are counted as retransmits, not new market events. A short reconnect is tested; a transport send failure fails closed.
+- Same receiver connection interruption: unacknowledged events stay bounded; HELLO resumes from validated seq and replays retained in-flight events. Exact retained duplicates marked `replay` are counted as retransmits, not new market events. Both a short reconnect and a closed peer during a send are tested; retained events must replay and be ACKed before they are released.
 - No ACK/heartbeat for two seconds: DISCONNECTED. The receiver sends ACK heartbeat every 200 ms and queries health about every 500 ms.
 - Queue overflow: INVALID, overflow increments, retained unacknowledged events are discarded/countable, later offers count as dropped. Bookmap continues; journal remains independent. The receiver's health query disables its healthy state even if no later seq arrives to reveal a gap.
 - New receiver process or publisher restart: INVALID. There is no book-snapshot/resume-from-disk protocol. Restart Linux, then restart/apply the exporter to begin a fresh START and book population. No automatic false HEALTHY reset.

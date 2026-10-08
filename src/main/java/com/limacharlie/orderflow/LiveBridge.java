@@ -244,12 +244,20 @@ public final class LiveBridge implements AutoCloseable {
                                 }
                                 if (!invalid) state = "CONNECTED";
                                 if (hello) {
-                                    send(
+                                    if (!send(
                                             data,
                                             id,
-                                            "{\"type\":\"WELCOME\",\"health\":" + status() + "}");
-                                    for (CanonicalEvent e : flight) {
-                                        if (!sendEvent(data, id, e, true)) break;
+                                            "{\"type\":\"WELCOME\",\"health\":" + status() + "}")) {
+                                        identity = null;
+                                        state = "DISCONNECTED";
+                                    } else {
+                                        for (CanonicalEvent e : flight) {
+                                            if (!sendEvent(data, id, e, true)) {
+                                                identity = null;
+                                                state = "DISCONNECTED";
+                                                break;
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -269,7 +277,10 @@ public final class LiveBridge implements AutoCloseable {
                         if (e == null) break;
                         flight.add(e);
                         if (!sendEvent(data, identity, e, false)) {
-                            invalidate("transport send failed; continuity unproven");
+                            // Retain the event in flight until this owner reconnects and ACKs.
+                            // A failed send does not prove delivery; HELLO resumes from its ACK.
+                            identity = null;
+                            state = "DISCONNECTED";
                             break;
                         }
                     }

@@ -51,4 +51,42 @@ class BridgeHealthQueryTest {
             second.close();
         }
     }
+
+    @Test
+    void disconnectedTransportRetainsEventsForSameOwner() throws Exception {
+        int market = ExporterTest.freePort(), health = ExporterTest.freePort();
+        var bridge = new LiveBridge("127.0.0.1", market, health, 100, "SYNTH", .25, () -> "{}");
+        try (var context = new ZContext()) {
+            var first = context.createSocket(SocketType.DEALER);
+            first.setIdentity("owner".getBytes());
+            first.setLinger(0);
+            first.setReceiveTimeOut(2000);
+            first.connect("tcp://127.0.0.1:" + market);
+            first.send("HELLO owner 0");
+            assertTrue(first.recvStr().contains("WELCOME"));
+            first.close();
+            Thread.sleep(200); // Let ROUTER observe the closed peer, before its inactivity timeout.
+            bridge.offer(new CanonicalEvent(1, 1, () -> "{\"seq\":1}"));
+            Thread.sleep(200);
+            assertFalse(bridge.invalid());
+            assertEquals(1, bridge.depth());
+            var replacement = context.createSocket(SocketType.DEALER);
+            replacement.setIdentity("owner".getBytes());
+            replacement.setLinger(0);
+            replacement.setReceiveTimeOut(2000);
+            replacement.connect("tcp://127.0.0.1:" + market);
+            replacement.send("HELLO owner 0");
+            assertTrue(replacement.recvStr().contains("WELCOME"));
+            String event = replacement.recvStr();
+            assertNotNull(event);
+            assertTrue(event.contains("\"event\":{\"seq\":1}"));
+            replacement.send("ACK owner 1");
+            long deadline = System.nanoTime() + 2_000_000_000L;
+            while (bridge.depth() != 0 && System.nanoTime() < deadline) Thread.sleep(5);
+            assertEquals(0, bridge.depth());
+            assertFalse(bridge.invalid());
+        } finally {
+            bridge.close();
+        }
+    }
 }
