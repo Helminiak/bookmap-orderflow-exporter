@@ -1,5 +1,9 @@
 package com.limacharlie.orderflow;
 
+import java.awt.BorderLayout;
+import java.awt.Desktop;
+import java.awt.FlowLayout;
+import java.awt.GridLayout;
 import java.io.BufferedOutputStream;
 import java.io.BufferedWriter;
 import java.io.IOException;
@@ -15,8 +19,20 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.zip.GZIPOutputStream;
+
+import javax.swing.JButton;
+import javax.swing.JCheckBox;
+import javax.swing.JFileChooser;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JSpinner;
+import javax.swing.JTextField;
+import javax.swing.SpinnerNumberModel;
+import javax.swing.SwingConstants;
+import javax.swing.SwingUtilities;
 
 import velox.api.layer1.annotations.Layer1ApiVersion;
 import velox.api.layer1.annotations.Layer1ApiVersionValue;
@@ -24,27 +40,31 @@ import velox.api.layer1.annotations.Layer1SimpleAttachable;
 import velox.api.layer1.annotations.Layer1StrategyName;
 import velox.api.layer1.data.InstrumentInfo;
 import velox.api.layer1.data.TradeInfo;
+import velox.api.layer1.settings.StrategySettingsVersion;
 import velox.api.layer1.simplified.Api;
 import velox.api.layer1.simplified.CustomModule;
+import velox.api.layer1.simplified.CustomSettingsPanelProvider;
 import velox.api.layer1.simplified.HistoricalModeListener;
 import velox.api.layer1.simplified.InitialState;
 import velox.api.layer1.simplified.MarketByOrderDepthDataListener;
 import velox.api.layer1.simplified.TimeListener;
 import velox.api.layer1.simplified.TradeDataListener;
+import velox.gui.StrategyPanel;
 
 /**
  * Raw Bookmap MBO/trade exporter for the Orderflow project.
  *
- * v0.1 goal: prove that a Bookmap replay (.bmf) and a live Rithmic-backed
- * Bookmap instrument can emit the same normalized raw event schema.
+ * v0.2 adds a Bookmap-native configuration/status UI while preserving the
+ * v0.1 raw event schema.
  *
  * This module intentionally performs no trading and no feature engineering.
  */
 @Layer1SimpleAttachable
-@Layer1StrategyName("Orderflow Raw Exporter v0.1")
+@Layer1StrategyName("Orderflow Raw Exporter v0.2")
 @Layer1ApiVersion(Layer1ApiVersionValue.VERSION2)
 public class BookmapOrderflowExporter implements
         CustomModule,
+        CustomSettingsPanelProvider,
         MarketByOrderDepthDataListener,
         TradeDataListener,
         TimeListener,
@@ -53,48 +73,79 @@ public class BookmapOrderflowExporter implements
     private static final String SCHEMA = "bookmap-orderflow-v0.1";
     private static final String POISON = new String("__POISON__");
     private static final int DEFAULT_QUEUE_CAPACITY = 1_000_000;
+    private static final int MIN_QUEUE_CAPACITY = 10_000;
+    private static final int MAX_QUEUE_CAPACITY = 5_000_000;
+    private static final long STATUS_REFRESH_INTERVAL_NS = 250_000_000L;
     private static final DateTimeFormatter FILE_TS =
             DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss_SSS").withZone(ZoneOffset.UTC);
 
+    @StrategySettingsVersion(currentVersion = 1, compatibleVersions = {})
+    public static class Settings {
+        public String outputDirectory = "";
+        public String runTag = "";
+        public int queueCapacity = DEFAULT_QUEUE_CAPACITY;
+        public boolean exportMbo = true;
+        public boolean exportTrades = true;
+    }
+
     private final Map<String, OrderState> orders = new HashMap<>();
     private final AtomicReference<Throwable> writerError = new AtomicReference<>();
+    private final AtomicBoolean statusUpdateScheduled = new AtomicBoolean();
+
+    private Api api;
+    private Settings settings;
 
     private String alias;
     private double pips;
     private double multiplier;
-    private long marketNs = 0L;
+    private volatile long marketNs = 0L;
     private long sequence = 0L;
     private long firstMarketNs = Long.MIN_VALUE;
     private long lastMarketNs = Long.MIN_VALUE;
     private volatile boolean realtimePhase = false;
     private volatile boolean stopped = false;
 
-    private long mboAdds = 0L;
-    private long mboReplaces = 0L;
-    private long mboCancels = 0L;
-    private long trades = 0L;
-    private long duplicateAdds = 0L;
-    private long unknownReplaces = 0L;
-    private long unknownCancels = 0L;
-    private long timeReversals = 0L;
+    private volatile long mboAdds = 0L;
+    private volatile long mboReplaces = 0L;
+    private volatile long mboCancels = 0L;
+    private volatile long trades = 0L;
+    private volatile long duplicateAdds = 0L;
+    private volatile long unknownReplaces = 0L;
+    private volatile long unknownCancels = 0L;
+    private volatile long timeReversals = 0L;
+    private volatile int openOrderCount = 0;
+    private volatile String lastMboEvent = "No MBO event received yet";
+    private volatile String lastTradeEvent = "No trade received yet";
+    private volatile String uiMessage = "Running";
+    private volatile long lastStatusRequestNs = 0L;
 
     private Path outputDir;
     private Path eventFile;
     private Path summaryFile;
     private BlockingQueue<String> queue;
     private Thread writerThread;
+    private int effectiveQueueCapacity = DEFAULT_QUEUE_CAPACITY;
+
+    private volatile JLabel statusLabel;
 
     private record OrderState(boolean bid, int priceLevel, int size) {}
 
     @Override
     public void initialize(String alias, InstrumentInfo info, Api api, InitialState initialState) {
+        this.api = api;
         this.alias = alias;
         this.pips = info.pips;
         this.multiplier = info.multiplier;
+        this.settings = api.getSettings(Settings.class);
+
+        resetRunState();
 
         try {
-            String configured = System.getenv("ORDERFLOW_EXPORT_DIR");
-            if (configured == null || configured.isBlank()) {
+            String configured = trimToEmpty(settings.outputDirectory);
+            if (configured.isBlank()) {
+                configured = trimToEmpty(System.getenv("ORDERFLOW_EXPORT_DIR"));
+            }
+            if (configured.isBlank()) {
                 configured = Paths.get(System.getProperty("user.home"), "BookmapOrderflowExports").toString();
             }
             outputDir = Paths.get(configured);
@@ -104,21 +155,46 @@ public class BookmapOrderflowExporter implements
             eventFile = outputDir.resolve(stem + ".ndjson.gz");
             summaryFile = outputDir.resolve(stem + ".summary.json");
 
-            int queueCapacity = DEFAULT_QUEUE_CAPACITY;
-            String queueEnv = System.getenv("ORDERFLOW_EXPORT_QUEUE");
-            if (queueEnv != null && !queueEnv.isBlank()) {
-                queueCapacity = Math.max(10_000, Integer.parseInt(queueEnv.trim()));
-            }
-            queue = new ArrayBlockingQueue<>(queueCapacity);
+            effectiveQueueCapacity = clamp(settings.queueCapacity, MIN_QUEUE_CAPACITY, MAX_QUEUE_CAPACITY);
+            queue = new ArrayBlockingQueue<>(effectiveQueueCapacity);
             startWriter();
 
             emitControl("START", "initialized");
+            uiMessage = "Export active";
+            scheduleStatusRefresh(true);
+
             System.out.println("[OrderflowExporter] alias=" + alias
                     + " pips=" + pips
+                    + " queue=" + effectiveQueueCapacity
                     + " output=" + eventFile);
         } catch (Exception e) {
+            uiMessage = "Initialization failed: " + e;
+            scheduleStatusRefresh(true);
             throw new IllegalStateException("Unable to initialize Orderflow exporter", e);
         }
+    }
+
+    private void resetRunState() {
+        orders.clear();
+        writerError.set(null);
+        marketNs = 0L;
+        sequence = 0L;
+        firstMarketNs = Long.MIN_VALUE;
+        lastMarketNs = Long.MIN_VALUE;
+        realtimePhase = false;
+        stopped = false;
+        mboAdds = 0L;
+        mboReplaces = 0L;
+        mboCancels = 0L;
+        trades = 0L;
+        duplicateAdds = 0L;
+        unknownReplaces = 0L;
+        unknownCancels = 0L;
+        timeReversals = 0L;
+        openOrderCount = 0;
+        lastMboEvent = "No MBO event received yet";
+        lastTradeEvent = "No trade received yet";
+        uiMessage = "Initializing";
     }
 
     @Override
@@ -132,16 +208,23 @@ public class BookmapOrderflowExporter implements
             firstMarketNs = nanoseconds;
         }
         lastMarketNs = nanoseconds;
+        scheduleStatusRefresh(false);
     }
 
     @Override
     public void send(String orderId, boolean isBid, int price, int size) {
         OrderState prior = orders.put(orderId, new OrderState(isBid, price, size));
+        openOrderCount = orders.size();
         if (prior != null) {
             duplicateAdds++;
         }
         mboAdds++;
-        emitMbo("MBO_ADD", orderId, isBid ? "BID" : "ASK", price, size, prior != null);
+        lastMboEvent = "ADD " + sideText(isBid) + " " + formatPriceLevel(price)
+                + " x" + size + " id=" + abbreviate(orderId);
+        if (settings.exportMbo) {
+            emitMbo("MBO_ADD", orderId, isBid ? "BID" : "ASK", price, size, prior != null);
+        }
+        scheduleStatusRefresh(false);
     }
 
     @Override
@@ -156,13 +239,21 @@ public class BookmapOrderflowExporter implements
             side = prior.bid() ? "BID" : "ASK";
             orders.put(orderId, new OrderState(prior.bid(), price, size));
         }
+        openOrderCount = orders.size();
         mboReplaces++;
-        emitMbo("MBO_REPLACE", orderId, side, price, size, anomaly);
+        lastMboEvent = "REPLACE " + side + " " + formatPriceLevel(price)
+                + " x" + size + " id=" + abbreviate(orderId)
+                + (anomaly ? " [UNKNOWN ORDER]" : "");
+        if (settings.exportMbo) {
+            emitMbo("MBO_REPLACE", orderId, side, price, size, anomaly);
+        }
+        scheduleStatusRefresh(false);
     }
 
     @Override
     public void cancel(String orderId) {
         OrderState prior = orders.remove(orderId);
+        openOrderCount = orders.size();
         String side = "UNKNOWN";
         Integer price = null;
         Integer size = null;
@@ -176,38 +267,56 @@ public class BookmapOrderflowExporter implements
             size = prior.size();
         }
         mboCancels++;
-        emitMboNullable("MBO_CANCEL", orderId, side, price, size, anomaly);
+        lastMboEvent = "CANCEL " + side
+                + (price == null ? "" : " " + formatPriceLevel(price))
+                + (size == null ? "" : " x" + size)
+                + " id=" + abbreviate(orderId)
+                + (anomaly ? " [UNKNOWN ORDER]" : "");
+        if (settings.exportMbo) {
+            emitMboNullable("MBO_CANCEL", orderId, side, price, size, anomaly);
+        }
+        scheduleStatusRefresh(false);
     }
 
     @Override
     public void onTrade(double price, int size, TradeInfo tradeInfo) {
         trades++;
-        long seq = nextSequence();
-        StringBuilder b = new StringBuilder(512);
-        b.append('{');
-        field(b, "schema", SCHEMA).append(',');
-        numberField(b, "seq", seq).append(',');
-        numberField(b, "market_ns", marketNs).append(',');
-        field(b, "phase", phase()).append(',');
-        field(b, "alias", alias).append(',');
-        field(b, "event", "TRADE").append(',');
-        field(b, "aggressor_side", tradeInfo.isBidAggressor ? "BUY" : "SELL").append(',');
-        rawNumberField(b, "price_level", Double.toString(price)).append(',');
-        rawNumberField(b, "price", Double.toString(price * pips)).append(',');
-        numberField(b, "size", size).append(',');
-        nullableStringField(b, "aggressor_order_id", tradeInfo.aggressorOrderId).append(',');
-        nullableStringField(b, "passive_order_id", tradeInfo.passiveOrderId).append(',');
-        booleanField(b, "execution_start", tradeInfo.isExecutionStart).append(',');
-        booleanField(b, "execution_end", tradeInfo.isExecutionEnd).append(',');
-        booleanField(b, "otc", tradeInfo.isOtc);
-        b.append('}');
-        enqueue(b.toString());
+        lastTradeEvent = (tradeInfo.isBidAggressor ? "BUY " : "SELL ")
+                + formatPriceLevel(price) + " x" + size
+                + " aggr=" + abbreviate(tradeInfo.aggressorOrderId)
+                + " passive=" + abbreviate(tradeInfo.passiveOrderId);
+
+        if (settings.exportTrades) {
+            long seq = nextSequence();
+            StringBuilder b = new StringBuilder(512);
+            b.append('{');
+            field(b, "schema", SCHEMA).append(',');
+            numberField(b, "seq", seq).append(',');
+            numberField(b, "market_ns", marketNs).append(',');
+            field(b, "phase", phase()).append(',');
+            field(b, "alias", alias).append(',');
+            field(b, "event", "TRADE").append(',');
+            field(b, "aggressor_side", tradeInfo.isBidAggressor ? "BUY" : "SELL").append(',');
+            rawNumberField(b, "price_level", Double.toString(price)).append(',');
+            rawNumberField(b, "price", Double.toString(price * pips)).append(',');
+            numberField(b, "size", size).append(',');
+            nullableStringField(b, "aggressor_order_id", tradeInfo.aggressorOrderId).append(',');
+            nullableStringField(b, "passive_order_id", tradeInfo.passiveOrderId).append(',');
+            booleanField(b, "execution_start", tradeInfo.isExecutionStart).append(',');
+            booleanField(b, "execution_end", tradeInfo.isExecutionEnd).append(',');
+            booleanField(b, "otc", tradeInfo.isOtc);
+            b.append('}');
+            enqueue(b.toString());
+        }
+        scheduleStatusRefresh(false);
     }
 
     @Override
     public void onRealtimeStart() {
         realtimePhase = true;
         emitControl("REALTIME_START", "Bookmap historical catch-up completed");
+        uiMessage = "Realtime";
+        scheduleStatusRefresh(true);
     }
 
     @Override
@@ -216,6 +325,8 @@ public class BookmapOrderflowExporter implements
             return;
         }
         stopped = true;
+        uiMessage = "Stopping";
+        scheduleStatusRefresh(true);
         try {
             emitControl("STOP", "module stopped");
             queue.put(POISON);
@@ -228,12 +339,227 @@ public class BookmapOrderflowExporter implements
             if (error != null) {
                 throw new IllegalStateException("Writer failed; export is not valid", error);
             }
+            uiMessage = "Stopped cleanly";
+            scheduleStatusRefresh(true);
             System.out.println("[OrderflowExporter] complete: " + summaryFile);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
+            uiMessage = "Stop interrupted";
+            scheduleStatusRefresh(true);
             throw new IllegalStateException("Interrupted while stopping exporter", e);
         } catch (IOException e) {
+            uiMessage = "Summary write failed: " + e;
+            scheduleStatusRefresh(true);
             throw new IllegalStateException("Unable to write exporter summary", e);
+        }
+    }
+
+    @Override
+    public StrategyPanel[] getCustomSettingsPanels() {
+        return buildPanels(settings, api, this);
+    }
+
+    public static StrategyPanel[] getCustomDisabledSettingsPanels() {
+        return buildPanels(new Settings(), null, null);
+    }
+
+    private static StrategyPanel[] buildPanels(Settings settings, Api api, BookmapOrderflowExporter instance) {
+        StrategyPanel configPanel = new StrategyPanel("Exporter configuration");
+        configPanel.setLayout(new BorderLayout(4, 4));
+
+        JPanel fields = new JPanel(new GridLayout(0, 1, 4, 4));
+
+        JCheckBox exportMboBox = new JCheckBox("Export MBO add / replace / cancel records", settings.exportMbo);
+        JCheckBox exportTradesBox = new JCheckBox("Export trade records", settings.exportTrades);
+        fields.add(exportMboBox);
+        fields.add(exportTradesBox);
+
+        JPanel outputRow = new JPanel(new BorderLayout(4, 0));
+        JTextField outputField = new JTextField(settings.outputDirectory == null ? "" : settings.outputDirectory, 30);
+        JButton browseButton = new JButton("Browse...");
+        outputRow.add(new JLabel("Output directory (blank = default): "), BorderLayout.WEST);
+        outputRow.add(outputField, BorderLayout.CENTER);
+        outputRow.add(browseButton, BorderLayout.EAST);
+        fields.add(outputRow);
+
+        JPanel tagRow = new JPanel(new BorderLayout(4, 0));
+        JTextField tagField = new JTextField(settings.runTag == null ? "" : settings.runTag, 30);
+        tagRow.add(new JLabel("Run tag: "), BorderLayout.WEST);
+        tagRow.add(tagField, BorderLayout.CENTER);
+        fields.add(tagRow);
+
+        JPanel queueRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
+        JSpinner queueSpinner = new JSpinner(new SpinnerNumberModel(
+                clamp(settings.queueCapacity, MIN_QUEUE_CAPACITY, MAX_QUEUE_CAPACITY),
+                MIN_QUEUE_CAPACITY,
+                MAX_QUEUE_CAPACITY,
+                10_000));
+        queueRow.add(new JLabel("Writer queue capacity: "));
+        queueRow.add(queueSpinner);
+        fields.add(queueRow);
+
+        JLabel applyNote = new JLabel(
+                "<html>Apply restarts this exporter instance and starts a new output file.</html>");
+        fields.add(applyNote);
+
+        JButton applyButton = new JButton("Apply settings / restart exporter");
+        configPanel.add(fields, BorderLayout.CENTER);
+        configPanel.add(applyButton, BorderLayout.SOUTH);
+
+        browseButton.addActionListener(e -> {
+            JFileChooser chooser = new JFileChooser();
+            chooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+            String current = outputField.getText().trim();
+            if (!current.isEmpty()) {
+                chooser.setCurrentDirectory(Paths.get(current).toFile());
+            }
+            if (chooser.showOpenDialog(configPanel) == JFileChooser.APPROVE_OPTION) {
+                outputField.setText(chooser.getSelectedFile().getAbsolutePath());
+            }
+        });
+
+        applyButton.addActionListener(e -> {
+            if (api == null) {
+                return;
+            }
+            settings.exportMbo = exportMboBox.isSelected();
+            settings.exportTrades = exportTradesBox.isSelected();
+            settings.outputDirectory = outputField.getText().trim();
+            settings.runTag = tagField.getText().trim();
+            settings.queueCapacity = ((Number) queueSpinner.getValue()).intValue();
+            api.setSettings(settings);
+            api.reload();
+        });
+
+        StrategyPanel statusPanel = new StrategyPanel("Live exporter status");
+        statusPanel.setLayout(new BorderLayout(4, 4));
+        JLabel status = new JLabel();
+        status.setVerticalAlignment(SwingConstants.TOP);
+        statusPanel.add(status, BorderLayout.CENTER);
+
+        JPanel buttons = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
+        JButton refreshButton = new JButton("Refresh");
+        JButton openFolderButton = new JButton("Open export folder");
+        buttons.add(refreshButton);
+        buttons.add(openFolderButton);
+        statusPanel.add(buttons, BorderLayout.SOUTH);
+
+        if (instance != null) {
+            instance.statusLabel = status;
+            instance.refreshStatusLabel();
+            refreshButton.addActionListener(e -> instance.refreshStatusLabel());
+            openFolderButton.addActionListener(e -> instance.openOutputFolder());
+        } else {
+            status.setText("<html>Enable the exporter for an instrument to see live status.</html>");
+        }
+
+        boolean enabled = api != null;
+        setEnabledRecursively(configPanel, enabled);
+        setEnabledRecursively(statusPanel, enabled);
+        return new StrategyPanel[] { configPanel, statusPanel };
+    }
+
+    private static void setEnabledRecursively(java.awt.Component component, boolean enabled) {
+        component.setEnabled(enabled);
+        if (component instanceof java.awt.Container container) {
+            for (java.awt.Component child : container.getComponents()) {
+                setEnabledRecursively(child, enabled);
+            }
+        }
+    }
+
+    private void openOutputFolder() {
+        try {
+            if (outputDir == null) {
+                uiMessage = "Output directory is not initialized";
+            } else if (!Desktop.isDesktopSupported()) {
+                uiMessage = "Desktop folder open is not supported on this system";
+            } else {
+                Desktop.getDesktop().open(outputDir.toFile());
+                uiMessage = "Opened export folder";
+            }
+        } catch (Exception e) {
+            uiMessage = "Unable to open export folder: " + e.getMessage();
+        }
+        refreshStatusLabel();
+    }
+
+    private void scheduleStatusRefresh(boolean force) {
+        if (statusLabel == null) {
+            return;
+        }
+        long now = System.nanoTime();
+        if (!force && now - lastStatusRequestNs < STATUS_REFRESH_INTERVAL_NS) {
+            return;
+        }
+        lastStatusRequestNs = now;
+        if (statusUpdateScheduled.compareAndSet(false, true)) {
+            SwingUtilities.invokeLater(() -> {
+                try {
+                    refreshStatusLabel();
+                } finally {
+                    statusUpdateScheduled.set(false);
+                }
+            });
+        }
+    }
+
+    private void refreshStatusLabel() {
+        JLabel label = statusLabel;
+        if (label == null) {
+            return;
+        }
+
+        Runnable update = () -> {
+            Throwable error = writerError.get();
+            int queueSize = queue == null ? 0 : queue.size();
+            int queueCapacity = effectiveQueueCapacity <= 0 ? DEFAULT_QUEUE_CAPACITY : effectiveQueueCapacity;
+            double fill = queueCapacity == 0 ? 0.0 : (100.0 * queueSize / queueCapacity);
+
+            StringBuilder b = new StringBuilder(1600);
+            b.append("<html>");
+            b.append("<b>Instrument:</b> ").append(html(alias)).append("<br/>");
+            b.append("<b>Mode:</b> ").append(phase()).append("<br/>");
+            b.append("<b>Status:</b> ").append(error == null ? html(uiMessage) : "WRITER ERROR").append("<br/>");
+            b.append("<b>Market/replay time:</b> ").append(html(formatMarketTime(marketNs))).append("<br/>");
+            b.append("<b>Output:</b> ").append(html(eventFile == null ? "not initialized" : eventFile.toString())).append("<br/>");
+            b.append("<b>Queue:</b> ").append(queueSize).append(" / ").append(queueCapacity)
+                    .append(String.format(" (%.2f%%)", fill)).append("<br/><br/>");
+
+            b.append("<b>Received events</b><br/>");
+            b.append("MBO add: ").append(mboAdds)
+                    .append(" &nbsp; replace: ").append(mboReplaces)
+                    .append(" &nbsp; cancel: ").append(mboCancels)
+                    .append(" &nbsp; trades: ").append(trades).append("<br/>");
+            b.append("Open MBO orders tracked: ").append(openOrderCount).append("<br/>");
+            b.append("Records written/enqueued: ").append(sequence).append("<br/><br/>");
+
+            b.append("<b>Integrity counters</b><br/>");
+            b.append("Duplicate adds: ").append(duplicateAdds)
+                    .append(" &nbsp; unknown replaces: ").append(unknownReplaces)
+                    .append(" &nbsp; unknown cancels: ").append(unknownCancels)
+                    .append(" &nbsp; time reversals: ").append(timeReversals).append("<br/><br/>");
+
+            b.append("<b>Last MBO:</b> ").append(html(lastMboEvent)).append("<br/>");
+            b.append("<b>Last trade:</b> ").append(html(lastTradeEvent)).append("<br/><br/>");
+
+            b.append("<b>Active configuration:</b> MBO=")
+                    .append(settings != null && settings.exportMbo)
+                    .append(", Trades=")
+                    .append(settings != null && settings.exportTrades)
+                    .append(", Run tag=")
+                    .append(html(effectiveRunTag()));
+            if (error != null) {
+                b.append("<br/><b>Writer error:</b> ").append(html(error.toString()));
+            }
+            b.append("</html>");
+            label.setText(b.toString());
+        };
+
+        if (SwingUtilities.isEventDispatchThread()) {
+            update.run();
+        } else {
+            SwingUtilities.invokeLater(update);
         }
     }
 
@@ -257,6 +583,8 @@ public class BookmapOrderflowExporter implements
                 out.flush();
             } catch (Throwable t) {
                 writerError.compareAndSet(null, t);
+                uiMessage = "Writer failed";
+                scheduleStatusRefresh(true);
             }
         }, "bookmap-orderflow-writer");
         writerThread.setDaemon(true);
@@ -265,7 +593,7 @@ public class BookmapOrderflowExporter implements
 
     /**
      * STRICT mode: block the Bookmap callback rather than silently drop an event.
-     * That is intentional for v0.1 historical extraction. Live streaming will use
+     * That is intentional for historical extraction. Live streaming will use
      * a different non-blocking journal/transport layer in a later revision.
      */
     private void enqueue(String line) {
@@ -340,9 +668,10 @@ public class BookmapOrderflowExporter implements
     private void writeSummary() throws IOException {
         Throwable error = writerError.get();
         boolean valid = error == null;
-        StringBuilder b = new StringBuilder(1024);
+        StringBuilder b = new StringBuilder(1400);
         b.append('{');
         field(b, "schema", SCHEMA).append(',');
+        field(b, "addon_version", "0.2.0").append(',');
         field(b, "alias", alias).append(',');
         rawNumberField(b, "pips", Double.toString(pips)).append(',');
         rawNumberField(b, "multiplier", Double.toString(multiplier)).append(',');
@@ -350,10 +679,13 @@ public class BookmapOrderflowExporter implements
         booleanField(b, "writer_ok", valid).append(',');
         nullableStringField(b, "writer_error", error == null ? null : error.toString()).append(',');
         numberField(b, "total_records", sequence).append(',');
-        numberField(b, "mbo_add", mboAdds).append(',');
-        numberField(b, "mbo_replace", mboReplaces).append(',');
-        numberField(b, "mbo_cancel", mboCancels).append(',');
-        numberField(b, "trades", trades).append(',');
+        numberField(b, "mbo_add_received", mboAdds).append(',');
+        numberField(b, "mbo_replace_received", mboReplaces).append(',');
+        numberField(b, "mbo_cancel_received", mboCancels).append(',');
+        numberField(b, "trades_received", trades).append(',');
+        booleanField(b, "export_mbo", settings.exportMbo).append(',');
+        booleanField(b, "export_trades", settings.exportTrades).append(',');
+        numberField(b, "queue_capacity", effectiveQueueCapacity).append(',');
         numberField(b, "duplicate_adds", duplicateAdds).append(',');
         numberField(b, "unknown_replaces", unknownReplaces).append(',');
         numberField(b, "unknown_cancels", unknownCancels).append(',');
@@ -361,13 +693,69 @@ public class BookmapOrderflowExporter implements
         nullableLongField(b, "first_market_ns", firstMarketNs == Long.MIN_VALUE ? null : firstMarketNs).append(',');
         nullableLongField(b, "last_market_ns", lastMarketNs == Long.MIN_VALUE ? null : lastMarketNs).append(',');
         numberField(b, "orders_open_at_stop", orders.size()).append(',');
-        field(b, "run_tag", System.getenv().getOrDefault("ORDERFLOW_RUN_TAG", ""));
+        field(b, "run_tag", effectiveRunTag());
         b.append('}');
         Files.writeString(summaryFile, b.toString() + System.lineSeparator(), StandardCharsets.UTF_8);
     }
 
+    private String effectiveRunTag() {
+        if (settings != null && settings.runTag != null && !settings.runTag.isBlank()) {
+            return settings.runTag;
+        }
+        return trimToEmpty(System.getenv("ORDERFLOW_RUN_TAG"));
+    }
+
+    private String formatPriceLevel(double priceLevel) {
+        return Double.toString(priceLevel * pips);
+    }
+
+    private static String sideText(boolean bid) {
+        return bid ? "BID" : "ASK";
+    }
+
+    private static String formatMarketTime(long ns) {
+        if (ns <= 0L) {
+            return "not received";
+        }
+        try {
+            long seconds = Math.floorDiv(ns, 1_000_000_000L);
+            long nanos = Math.floorMod(ns, 1_000_000_000L);
+            return Instant.ofEpochSecond(seconds, nanos).toString() + " (" + ns + " ns)";
+        } catch (RuntimeException e) {
+            return Long.toString(ns) + " ns";
+        }
+    }
+
+    private static String abbreviate(String value) {
+        if (value == null || value.isBlank()) {
+            return "n/a";
+        }
+        if (value.length() <= 16) {
+            return value;
+        }
+        return value.substring(0, 6) + "…" + value.substring(value.length() - 6);
+    }
+
+    private static int clamp(int value, int min, int max) {
+        return Math.max(min, Math.min(max, value));
+    }
+
+    private static String trimToEmpty(String s) {
+        return s == null ? "" : s.trim();
+    }
+
     private static String sanitize(String s) {
         return s == null ? "unknown" : s.replaceAll("[^A-Za-z0-9._-]+", "_");
+    }
+
+    private static String html(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace("\"", "&quot;");
     }
 
     private static StringBuilder field(StringBuilder b, String key, String value) {
