@@ -1,5 +1,11 @@
 # Master engineering handoff — 2026-10-08
 
+## Agent A follow-up review / CI correction
+
+Source cd8fffa had31 local Java/15 validator/six loopback passes and identical repeat artifacts, but Ubuntu push CI timed out before WELCOME in the existing overflow-journal test. Readiness had not been observed; the cause is not conclusively established. The next correction observes bounded health readiness, emits explicit missing-frame assertions and prevents repeated ephemeral test-port selection across the test JVM. Delivery/overflow assertions and production behavior are preserved.
+
+Fresh Codex static review of cd8fffa found no high/critical defect, but P2 recovery text incorrectly combined same-process reconnect with a new receiver startup command. The correction removes that command for recoverable disconnect and adds a negative regression. Bounded source Qwen review returned no answer with5,939 observed tokens; no retry or acceptance claim. ChatGPT review remains pending.
+
 ## Agent A receiver-warning candidate
 
 Owner-loaded governance directive is on separate unmerged docs/exporter-agent-checkpoints-20261008; original ingestion reconciliation and private role boundaries were read. This work uses isolated feature/agent-a-receiver-warning based on 01f016b54dfbb15b7fa055e8e99260e9e649a6d3. PR6 source/worktree and other-agent branches are preserved.

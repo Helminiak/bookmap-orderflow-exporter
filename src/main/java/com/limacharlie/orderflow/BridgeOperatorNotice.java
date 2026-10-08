@@ -169,9 +169,9 @@ final class BridgeOperatorNotice extends JPanel {
                             + " remains available. Receiver-process restart is not supported."
                             + retained
                             + advisory
-                            + " "
-                            + START
-                            + " Archive validity is separate.",
+                            + " Restore the connection for that existing receiver; do not launch a"
+                            + " second receiver. A receiver restart requires a fresh exporter"
+                            + " session in a safe window. Archive validity is separate.",
                     true);
         if (!s.registered())
             return new Notice(

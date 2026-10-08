@@ -212,6 +212,7 @@ class ExporterTest {
                 new InstrumentInfo("SYNTH", "CME", "TEST", .25, 1, "Synthetic", true),
                 api(settings),
                 null);
+        awaitBridgeReady(settings.bridgeHealthPort);
         // Consume START before switching to LIVE, then stop ACKing to provoke LIVE overflow.
         try (var context = new org.zeromq.ZContext()) {
             var dealer = context.createSocket(org.zeromq.SocketType.DEALER);
@@ -219,8 +220,11 @@ class ExporterTest {
             dealer.setLinger(0);
             dealer.connect("tcp://127.0.0.1:" + settings.bridgePort);
             dealer.send("HELLO overflow-test 0");
-            assertTrue(dealer.recvStr().contains("WELCOME"));
-            assertTrue(dealer.recvStr().contains("\"seq\":1"));
+            String welcome = dealer.recvStr(), start = dealer.recvStr();
+            assertNotNull(welcome, "WELCOME missing after observed health readiness");
+            assertNotNull(start, "START missing after observed health readiness");
+            assertTrue(welcome.contains("WELCOME"));
+            assertTrue(start.contains("\"seq\":1"));
             dealer.send("ACK overflow-test 1");
             exporter.onTimestamp(100);
             exporter.onRealtimeStart();
@@ -268,9 +272,25 @@ class ExporterTest {
         assertEquals(2, droppedField.getLong(exporter));
     }
 
+    private static final java.util.Set<Integer> testPorts =
+            java.util.concurrent.ConcurrentHashMap.newKeySet();
+
     static int freePort() throws Exception {
-        try (var socket = new java.net.ServerSocket(0)) {
-            return socket.getLocalPort();
+        // Closing a probe can immediately return the same ephemeral port on another call.
+        while (true) {
+            try (var socket = new java.net.ServerSocket(0)) {
+                int port = socket.getLocalPort();
+                if (testPorts.add(port)) return port;
+            }
         }
+    }
+
+    static void awaitBridgeReady(int healthPort) {
+        String ready = null;
+        long deadline = System.nanoTime() + 10_000_000_000L;
+        while (ready == null && System.nanoTime() < deadline)
+            ready = BridgeHealthQuery.query("127.0.0.1", healthPort, 200);
+        assertNotNull(ready, "Publisher health endpoint did not become ready");
+        assertTrue(ready.contains("\"invalid\":false"), ready);
     }
 }

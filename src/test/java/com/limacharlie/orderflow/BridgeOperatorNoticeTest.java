@@ -39,6 +39,8 @@ class BridgeOperatorNoticeTest {
                 BridgeOperatorNotice.describe(snapshot("DISCONNECTED", false, "", true, 50, 50));
         assertEquals("RECOVERABLE DISCONNECT", disconnected.state());
         assertTrue(disconnected.message().contains("Receiver-process restart is not supported"));
+        assertFalse(disconnected.message().contains("Start-Receiver.sh"));
+        assertTrue(disconnected.message().contains("do not launch a second receiver"));
         var invalid =
                 BridgeOperatorNotice.describe(
                         snapshot("INVALID", true, "outbound buffer overflow", true, 50, 0));
