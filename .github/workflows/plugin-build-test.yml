@@ -44,6 +44,9 @@ jobs:
       - name: Test canonical capture and summary validator
         run: python -m unittest discover -s tests -v
 
+      - name: Smoke-test reproducible synthetic benchmark
+        run: python tools/benchmark_exporter.py --classpath-file build/fixture-classpath.txt --cycles 10 --rate 100000 --output benchmark-result.json
+
       - name: Inspect packaged JAR
         shell: bash
         run: |

@@ -1,0 +1,29 @@
+{
+  "source_report_sha256": null,
+  "source_availability": "Previously inspected in this session; original SMB path unavailable at closeout. Aggregate retained from inspection, not freshly revalidated.",
+  "checked_at": "2026-10-08T07:54:54.2419067Z",
+  "status": "PASS",
+  "requested_seconds": 60,
+  "samples": 118,
+  "acknowledged_events": 4656,
+  "published_events": 4656,
+  "query_failures": 0,
+  "reported_failures": [],
+  "stable_session": true,
+  "stable_receiver": true,
+  "all_connected_valid": true,
+  "no_bridge_losses": true,
+  "journal_healthy": true,
+  "first_sequence": 1549246,
+  "final_sequence": 1553902,
+  "final_ack_caught_up": true,
+  "maximum_sampled_pending": 2,
+  "bridge_queue_high_water": 100000,
+  "bridge_queue_capacity": 100000,
+  "callback_max_ns": 1545169900,
+  "limitations": [
+    "Sanitized aggregates only; source unavailable for fresh verification or hashing",
+    "Health/ACK evidence, not finalized archive or phase-separated slowdown measurement",
+    "Report does not encode build SHA; exact installed JAR not certified"
+  ]
+}

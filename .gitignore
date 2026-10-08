@@ -28,3 +28,20 @@ BookmapOrderflowExports/
 # Operating-system metadata
 .DS_Store
 Thumbs.db
+
+# Local runtimes, profiles and compiled research data
+.venv/
+.venv312/
+*.jar
+!gradle/wrapper/gradle-wrapper.jar
+*.jfr
+*.hprof
+*.parquet
+*.arrow
+*.feather
+*.ipc
+*.local.json
+benchmark-result.json
+# Explicitly named tiny synthetic fixtures may be reviewed and tracked.
+!tests/fixtures/synthetic-*.ndjson
+!tests/fixtures/synthetic-*.summary.json
