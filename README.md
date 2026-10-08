@@ -14,6 +14,38 @@ It is deliberately **not** the proprietary entry-quality model, feature engine, 
 
 The downstream private repository is intended to consume the normalized output of this project for feature engineering, auction-state analysis, MBO microstructure analysis, replay research, and entry-quality scoring.
 
+## v0.2 Bookmap UI
+
+v0.2 adds a Bookmap-native configuration and status interface. After enabling **Orderflow Raw Exporter v0.2** for an instrument, open its settings/configuration panel.
+
+Configurable items:
+
+- output directory
+- run tag
+- writer queue capacity
+- export MBO records on/off
+- export trade records on/off
+
+Changing configuration and pressing **Apply settings / restart exporter** stores the settings in Bookmap, reloads the addon for that instrument, and starts a new output file.
+
+The live status panel shows:
+
+- current instrument
+- HISTORY vs REALTIME phase
+- Bookmap market/replay timestamp
+- active output file
+- writer queue utilization
+- MBO add/replace/cancel counts
+- trade count
+- number of tracked MBO orders
+- records written/enqueued
+- integrity/anomaly counters
+- last MBO event
+- last trade
+- writer errors, if any
+
+The panel also includes **Open export folder** and **Refresh** controls.
+
 ## Scope
 
 Appropriate contents include:
@@ -58,41 +90,32 @@ gradle clean jar
 Output:
 
 ```text
-build\libs\bookmap-orderflow-exporter-v0.1.jar
+build\libs\bookmap-orderflow-exporter-v0.2.jar
 ```
 
 The project currently pins Bookmap API `7.6.0.20`, matching the official DemoStrategies build configuration used when the initial scaffold was created. If the installed Bookmap release requires another compatible API artifact, change `bookmapApiVersion` in `gradle.properties`.
 
 ## Load into Bookmap
 
-1. Build the JAR.
+1. Build or download the JAR.
 2. In Bookmap, open API plugin/add-on configuration.
-3. Add the generated JAR.
+3. Add `bookmap-orderflow-exporter-v0.2.jar`.
 4. Open one ES instrument or a `.bmf` replay.
-5. Enable the exporter for that instrument.
-6. Let the replay run monotonically for the initial validation test.
-7. Disable the addon or close the instrument to flush output and create the summary file.
+5. Enable **Orderflow Raw Exporter v0.2** for that instrument.
+6. Open the addon's settings panel to view/configure the exporter.
+7. For initial validation, replay only a few minutes monotonically.
+8. Disable the addon or close the instrument to flush output and create the summary file.
 
 ## Output directory
 
-Default:
+The output directory is now configurable inside Bookmap.
 
-```text
-%USERPROFILE%\BookmapOrderflowExports
-```
+If the Bookmap setting is blank, the addon falls back to:
 
-Example override:
+1. `ORDERFLOW_EXPORT_DIR`, if present.
+2. Otherwise `%USERPROFILE%\BookmapOrderflowExports`.
 
-```powershell
-$env:ORDERFLOW_EXPORT_DIR='D:\Orderflow\BookmapExports'
-$env:ORDERFLOW_RUN_TAG='ES historical validation 01'
-```
-
-Optional queue size:
-
-```powershell
-$env:ORDERFLOW_EXPORT_QUEUE='1000000'
-```
+The run tag is also configurable in Bookmap. If blank, `ORDERFLOW_RUN_TAG` is used when present.
 
 The historical extraction path uses strict backpressure: when the writer queue fills, the Bookmap callback blocks rather than silently dropping market events. This is intentional for historical extraction correctness. A production low-latency live-stream path may use a different transport design.
 
@@ -105,7 +128,7 @@ Each run creates files similar to:
 <alias>_<UTC timestamp>.summary.json
 ```
 
-The summary contains event totals and reconstruction anomalies.
+The summary contains event totals, active export configuration, and reconstruction anomalies.
 
 ## Validate after a replay
 
