@@ -14,7 +14,7 @@ Purpose: use Bookmap as the decoding layer for historical `.bmf` replay and live
 
 ## Next release
 
-**v0.5 is on hold pending the project owner's feature updates.** The v0.4 evaluation does not add bridge/network features or change the Java recorder.
+**v0.5 optional live bridge is implemented for local testing.** One addon fans the same canonical events to the journal and an acknowledged ZeroMQ receiver. See [protocol, defaults, limitations, and two-machine setup](docs/live-bridge-v0.5.md) and [local test evidence](docs/validation/2026-10-08-v0.5-loopback.md). The v0.4 approval remains limited to its tested capture. v0.5 Bookmap runtime/LAN approval is pending.
 
 ## Repository boundary
 
@@ -105,13 +105,13 @@ Requirements:
 From this directory:
 
 ```powershell
-gradle clean jar
+gradle clean test jar
 ```
 
 Output:
 
 ```text
-build\libs\bookmap-orderflow-exporter-v0.4.jar
+build\libs\bookmap-orderflow-exporter-v0.5.jar
 ```
 
 The project currently pins Bookmap API `7.6.0.20`, matching the official DemoStrategies build configuration used when the initial scaffold was created. If the installed Bookmap release requires another compatible API artifact, change `bookmapApiVersion` in `gradle.properties`.
@@ -120,9 +120,9 @@ The project currently pins Bookmap API `7.6.0.20`, matching the official DemoStr
 
 1. Build or download the JAR.
 2. In Bookmap, open API plugin/add-on configuration.
-3. Add `bookmap-orderflow-exporter-v0.4.jar`.
+3. Add `bookmap-orderflow-exporter-v0.5.jar`.
 4. Open one ES instrument or a `.bmf` replay.
-5. Enable **Orderflow Raw Exporter v0.4** for that instrument.
+5. Enable **Orderflow Raw Exporter v0.5** for that instrument.
 6. Open the addon's settings panel to view/configure the exporter.
 7. For initial validation, replay only a few minutes monotonically.
 8. Disable the addon or close the instrument to flush output and create the summary file.
@@ -138,7 +138,7 @@ If the Bookmap setting is blank, the addon falls back to:
 
 The run tag is also configurable in Bookmap. If blank, `ORDERFLOW_RUN_TAG` is used when present.
 
-The historical extraction path uses strict backpressure: when the writer queue fills, the Bookmap callback blocks rather than silently dropping market events. This is intentional for historical extraction correctness. A production low-latency live-stream path may use a different transport design.
+The historical extraction path uses strict backpressure: when the writer queue fills, the Bookmap callback blocks rather than silently dropping market events. This is intentional for historical extraction correctness. v0.5 uses independent non-waiting LIVE bridge/journal buffers; overflow explicitly invalidates the affected output. See the v0.5 protocol/setup guide.
 
 v0.4 uses a capacity-driven buffered-recorder policy. A 4 MiB `BufferedOutputStream` sits below GZIP. During high data volume it writes to the operating system automatically when that compressed-output buffer fills; during quiet periods a configurable maximum checkpoint interval flushes residual buffered data. The default checkpoint interval is 60 seconds. No checkpoint calls `fsync`, so Windows and the SSD controller can still coalesce physical writes.
 

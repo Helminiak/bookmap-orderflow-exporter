@@ -1,0 +1,65 @@
+# Optional live bridge v0.5
+
+One existing Bookmap addon receives each callback once. It copies seq, market_ns, phase, alias, pips and event-specific fields into an immutable `CanonicalEvent`. The journal and publisher independently consume that event. JSON serialization is lazy, on worker threads; a cached canonical string avoids repeat work in the normal case. Concurrent workers may serialize twice, without waiting on each other. No inference or feature engineering is present.
+
+## Transport and contract
+
+JeroMQ 0.6.0 is bundled in the same v0.5 JAR, including its Java-only jnacl dependency. Bookmap API 7.6.0.20 is compile-only. No native ZeroMQ installation is needed on Windows.
+
+Market port **5555/TCP**: Java ROUTER → one Python DEALER. Health port **5556/TCP**: Java REP ← Python REQ. Ports/bind address are configurable per instrument; simultaneous instruments need distinct port pairs. This version has no fanout to multiple independent receivers.
+
+The [ZeroMQ guide's discussion of PUB/SUB failure modes](https://zguide.zeromq.org/docs/chapter5/) explains why PUB alone cannot establish subscriber continuity. This bridge uses an application handshake and cumulative acknowledgements. This is bounded live delivery, not durable messaging.
+
+The DEALER sends one UTF-8 frame: `HELLO <receiver-id> <last-validated-seq>` or `ACK <receiver-id> <last-validated-seq>`. ROUTER prepends routing identity. The first receiver must HELLO at seq 0. The initial WELCOME contains `{type: WELCOME, health: {...}}`, including exporter-session UUID, alias and pips. Receiver IDs persist only for that running receiver process.
+
+Each EVENT envelope contains `type`, `protocol: orderflow-live-v0.1`, `session`, `sent_epoch_ns`, `replay`, and `event`. **The nested event is exactly the journal's `bookmap-orderflow-v0.1` JSON object**, including control lifecycle, nullable IDs, execution markers, anomaly fields and prices. No separate historical/live market contract. `market_ns` is market data, never a transport delay. `sent_epoch_ns` is millisecond-resolution sender wall time; reported lag is approximate and depends on synchronized Windows/Linux clocks.
+
+The receiver ACKs only validated events. Maximum in-flight window: 256 events. Socket send/receive high-water marks: 512 messages. All socket creation, reads, sends and closure happen on the publisher worker. Sends use DONTWAIT. An unexpected send failure invalidates the bridge rather than promising continuity.
+
+## Bounds, failure and recovery
+
+Defaults: bridge disabled; bind `0.0.0.0`; outbound capacity **100,000 unacknowledged events**, including queued + in-flight; journal capacity **1,000,000 events**; compressed disk buffer 4 MiB; checkpoint age 60 seconds. Capacity is an event bound, not an exact byte bound; IDs/payload size and the deterministic open-order map also consume memory.
+
+Callback offers use a CAS capacity reservation and a concurrent queue, without queue locks, waiting, sockets, disk or compression. The JVM/OS can still pause threads (allocation, GC, scheduling); this is not a hard-real-time guarantee.
+
+- No receiver: retain START and subsequent events until the buffer fills. Linux should start before enabling/restarting the exporter.
+- Same receiver connection interruption: unacknowledged events stay bounded; HELLO resumes from validated seq and replays retained in-flight events. Exact retained duplicates marked `replay` are counted as retransmits, not new market events. A short reconnect is tested; a transport send failure fails closed.
+- No ACK/heartbeat for two seconds: DISCONNECTED. The receiver sends ACK heartbeat every 200 ms and queries health about every 500 ms.
+- Queue overflow: INVALID, overflow increments, retained unacknowledged events are discarded/countable, later offers count as dropped. Bookmap continues; journal remains independent. The receiver's health query disables its healthy state even if no later seq arrives to reveal a gap.
+- New receiver process or publisher restart: INVALID. There is no book-snapshot/resume-from-disk protocol. Restart Linux, then restart/apply the exporter to begin a fresh START and book population. No automatic false HEALTHY reset.
+- Bridge bind/config/socket failure: UI reports FAILED/INVALID; journal continues.
+- LIVE journal overflow/writer failure: archive INVALID, writer_ok=false, dropped/overflow counters and count mismatch; LIVE callbacks continue, bridge remains independent. Do not use that archive as complete data.
+- HISTORY journal: strict backpressure for complete extraction. Turning off “Responsive LIVE journal” deliberately enables historical-style blocking in LIVE and is unsuitable for the responsiveness acceptance run.
+- Stop/unload drains the journal on the lifecycle thread, then gives the bridge up to five seconds of background ACK grace. Hard shutdown/crash is not lossless. A STOPPED receiver has validated STOP; publisher snapshots in the journal summary may precede the final bridge ACK/grace outcome.
+
+Inference consumers must require HEALTHY and a complete START-derived state; DISCONNECTED, INVALID, WAITING_START and STOPPED are not an active healthy inference feed. MBO anomalies, seq duplicates/gaps, missing replace/cancel references and TIME_REVERSAL all fail closed. Trade callbacks preserve IDs/flags but do not mutate orders: MBO callbacks alone own book state.
+
+## Instrumentation and tests
+
+UI refresh is throttled to 250 ms. Callback histogram uses atomic counters and log2 nanosecond buckets: p50/p95/p99 are **upper bounds**, not exact sampled quantiles. Count/rate includes timestamp and realtime callbacks as well as market events; unique-event and retransmission counters are separate on the bridge. Rates are run averages; peak callback rate uses completed one-second windows. The measured callback duration excludes the histogram bookkeeping itself.
+
+`gradle clean test jar` builds/tests on Windows and Ubuntu. JUnit compares 100 ADD + 20 REPLACE + 30 TRADE + 40 CANCEL + 3 controls across the actual exporter callbacks, finalized gzip journal and wire, field for field. Public Python regression tests cover strict gzip/schema/summary validation. The private receiver tests add exact Java/Python semantic equality, gaps, duplicates, same-process reconnect, restart and tiny-buffer overflow.
+
+Synthetic standalone publisher (not another Bookmap plugin):
+
+```text
+java -cp build/libs/bookmap-orderflow-exporter-v0.5.jar com.limacharlie.orderflow.BridgeFixture MARKET_PORT HEALTH_PORT CAPACITY CYCLES RATE MODE REPORT_JSON SYNTHETIC_JOURNAL
+```
+
+MODE is healthy/gap/duplicate/overflow. The fixture generates public synthetic events only. Its callback timing measures event construction/offer, while its JSON was prepared outside that timed section. The separate test-class ExporterCallbackFixture invokes the real addon callbacks; `gradle writeFixtureClasspath` supplies its test-only Bookmap API classpath. See local evidence for both measurements. Neither fixture runs the Bookmap application.
+
+## Windows → Ubuntu smoke test
+
+1. Download the Windows CI artifact `bookmap-orderflow-exporter-v0.5-windows-latest` from this PR's successful Plugin Build Test run, or build with JDK 17/Gradle 8.10 (`gradle clean test jar`). Extract `bookmap-orderflow-exporter-v0.5.jar`.
+2. Disable/unload the previous exporter in Bookmap and exit Bookmap. Replace its prior JAR with v0.5; keep one addon installed. Restart Bookmap, load the new JAR in the addons manager, and enable **Orderflow Raw Exporter v0.5** for ES.
+3. Identify the Windows private LAN IPv4 using `ipconfig`. Set bridge bind to that interface or `0.0.0.0`, market port 5555, health port 5556. Keep responsive LIVE journaling on and both MBO/trade channels on. Leave bridge disabled until Ubuntu is listening.
+4. Permit TCP 5555/5556 from the Ubuntu machine on the Private firewall profile. Administrator PowerShell (replace the Ubuntu IP):
+
+```powershell
+New-NetFirewallRule -DisplayName "Orderflow v0.5 LAN" -Direction Inbound -Action Allow -Protocol TCP -LocalPort 5555,5556 -Profile Private -RemoteAddress 192.168.1.60
+```
+
+5. Follow the private receiver installation instructions on Ubuntu and start it against the Windows IPv4 first. This version is a trusted-LAN, unauthenticated/unencrypted connection; do not expose these ports to the Internet.
+6. In Bookmap settings, enable Live Linux bridge and Apply/restart the exporter. Confirm CONNECTED, increasing published/ACK seq, zero overflow and small queue depth. Linux should show HEALTHY after START/history catch-up, zero gaps/duplicates, increasing trade counts and plausible open orders.
+7. Run the same short replay with bridge disabled/enabled and compare Bookmap elapsed replay time, CPU and UI responsiveness. Record p95/p99/max callback duration, queue high water, source/receiver rates and journal validity. Repeat at accelerated replay rates. Preferred slowdown <3%; 3–5% only if responsive; >5% requires optimization, >10% is unacceptable. No such application slowdown result has been measured here.
+8. Stop cleanly and validate the new journal plus summary with `python tools/validate_export.py CAPTURE.ndjson.gz --summary CAPTURE.summary.json`. Preserve real captures locally. If INVALID, stop downstream use and start a fresh exporter/receiver session; increasing capacity alone cannot repair a lost book history.

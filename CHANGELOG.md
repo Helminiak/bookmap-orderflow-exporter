@@ -2,6 +2,17 @@
 
 This project keeps the acquisition layer public and versioned so the development path is visible from the original exporter scaffold through later validation-driven changes. Proprietary entry-quality logic belongs in the separate private `orderflow-entry-engine` repository and is intentionally excluded here.
 
+## [0.5.0] - 2026-10-08 (local bridge candidate)
+
+- Integrated an optional JeroMQ ROUTER/DEALER bridge into the existing addon; disabled by default.
+- Canonical callback copies fan out independently to journal/publisher workers; JSON and UI formatting run off market callbacks.
+- Bounded non-waiting LIVE journal/bridge queues. Overflow invalidates the affected output; historical extraction retains strict journal backpressure.
+- Added cumulative ACKs, retained unacknowledged events, same-receiver reconnect, explicit restart/overflow invalidation and a health channel.
+- Added bridge settings/status, lightweight callback latency histograms, rates and queue counters.
+- Bundled JeroMQ plus its Java dependency and license notices in the single v0.5 JAR.
+- Added synthetic callback/journal/wire regression tests and loopback/stress fixtures. No proprietary model code or raw market data.
+- This supersedes the feature hold following the owner's explicit bridge request. Physical Bookmap/LAN responsiveness is not yet validated.
+
 ## v0.4 runtime validation follow-up - 2026-10-08
 
 - Approved the tested v0.4 capture/export workflow after independent validation of the complete 786,347-record archive and matching summary; see [scope and evidence](docs/validation/2026-10-08-v0.4-runtime-validation.md).
