@@ -21,3 +21,5 @@ Ask ChatGPT: “Review the current Bookmap exporter PR and this GitHub review in
 Do not post private ES entry-quality research, unlicensed captures or credentials here.
 
 - [Agent A token-exhaustion checkpoint and zero-context recovery](../../ops/agents/TOKEN_EXHAUSTION_RECOVERY.md) — verified GitHub preservation before session limit; shortest post-reset restart
+
+- [Owner feedback — accessible Linux Bridge error, native Windows installation gate and quota-safe checkpointing](../BOOKMAP_REVIEW_UX_AND_NATIVE_INSTALL_GATES.md) — scoped acceptance requirements, not completed code
