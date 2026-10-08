@@ -8,9 +8,13 @@ Purpose: use Bookmap as the decoding layer for historical `.bmf` replay and live
 - **v0.2 build verified:** Windows and Ubuntu CI compile/package successfully against Bookmap API `7.6.0.20`.
 - **v0.2 runtime validated:** native settings/status UI and periodic disk flushing were verified in Bookmap with the writer queue at 0% during the observed run.
 - **v0.3 validated at build/runtime level:** established the configurable buffering/status framework.
-- **v0.4 current:** uses a 4 MiB capacity-driven compressed-output buffer plus a 60-second maximum checkpoint interval, closer to Bookmap's publicly documented buffered-recorder behavior.
+- **v0.4 runtime approved:** the complete 786,347-record capture passes independent stream/summary validation; see [approval and scope](docs/validation/2026-10-08-v0.4-runtime-validation.md). It uses a 4 MiB capacity-driven compressed-output buffer plus a 60-second maximum checkpoint interval, closer to Bookmap's publicly documented buffered-recorder behavior.
 - Development history is intentionally preserved. See [CHANGELOG.md](CHANGELOG.md) and [the first runtime validation record](docs/validation/2026-10-08-v0.1-first-runtime-capture.md).
 
+
+## Next release
+
+**v0.5 is on hold pending the project owner's feature updates.** The v0.4 evaluation does not add bridge/network features or change the Java recorder.
 
 ## Repository boundary
 
@@ -154,15 +158,19 @@ The summary contains event totals, active export configuration, and reconstructi
 ## Validate after a replay
 
 ```bash
-python tools/validate_export.py path/to/export.ndjson.gz
+python tools/validate_export.py path/to/export.ndjson.gz --summary path/to/export.summary.json
 ```
+
+The validator fails with exit code 2 on stream/schema/lifecycle/MBO inconsistencies, gzip integrity failures, or summary mismatches. With a summary it also validates pips and v0.4 finalized byte accounting. Capture-only validation remains available, with summary/pips checks explicitly marked as not performed.
 
 For a clean validation test require:
 
 - `parse_errors = 0`
 - `seq_gaps = 0`
-- no unexpected `time_reversals_observed`
-- inspection of `unknown_replaces` / `unknown_cancels`
+- `time_reversals_observed = 0`
+- `duplicate_adds_reconstructed = 0`
+- `unknown_replaces_reconstructed = 0` / `unknown_cancels_reconstructed = 0`
+- `valid = true` and `summary_checked = true` when a summary is supplied
 
 Unknown replace/cancel events are not automatically proof of corrupt BMF data; they can also indicate initial-state semantics around attachment. Bookmap replay behavior must be observed before those cases are normalized away.
 

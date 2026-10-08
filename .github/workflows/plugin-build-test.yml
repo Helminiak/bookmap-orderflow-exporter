@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - 'ci/**'
+      - 'v0.4/**'
   pull_request:
   workflow_dispatch:
 
@@ -34,8 +35,13 @@ jobs:
       - name: Compile and package Bookmap addon
         run: gradle --no-daemon clean jar
 
-      - name: Validate Python validator syntax
-        run: python -m py_compile tools/validate_export.py
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Test canonical capture and summary validator
+        run: python -m unittest discover -s tests -v
 
       - name: Inspect packaged JAR
         shell: bash

@@ -1,0 +1,60 @@
+{
+  "evaluation_date": "2026-10-08",
+  "approval": "v0.4 functional capture/export approved on complete validated run",
+  "exporter_version": "0.4.0",
+  "exporter_merge_commit": "8eba0d487d2866308cb4c57f86a8db706684c26c",
+  "complete_capture": {
+    "valid": true,
+    "valid_basic_stream": true,
+    "canonical_schema": "bookmap-orderflow-v0.1",
+    "capture_sha256": "eb8c64256902ed77e1ed76263532f76df2686d06ed76c09ebac3d1f8d6d1facc",
+    "capture_bytes": 11254464,
+    "summary_sha256": "0eafbd80690793baaf9031f69f6cadab334a43d49c29eaa353b72de17791bb54",
+    "summary_checked": true,
+    "pips_checked": true,
+    "records": 786347,
+    "alias": "ESZ6.CME@RITHMIC",
+    "event_counts": {
+      "CONTROL": 3,
+      "MBO_ADD": 332003,
+      "MBO_CANCEL": 323552,
+      "MBO_REPLACE": 57882,
+      "TRADE": 72907
+    },
+    "seq_gaps": 0,
+    "time_reversals_observed": 0,
+    "parse_errors": 0,
+    "duplicate_adds_reconstructed": 0,
+    "unknown_replaces_reconstructed": 0,
+    "unknown_cancels_reconstructed": 0,
+    "orders_open_at_end": 8451,
+    "first_market_ns": 1791409500834509400,
+    "last_market_ns": 1791435640971704500,
+    "zero_size_execution_end_markers": 23876,
+    "compression_integrity": "gzip CRC32/ISIZE passed"
+  },
+  "writer_observations": {
+    "max_checkpoint_interval_ms": 60000,
+    "flush_policy": "buffer_full_or_checkpoint",
+    "io_buffer_bytes": 4194304,
+    "application_disk_bytes": 11254464,
+    "application_disk_write_ops": 12,
+    "checkpoint_flush_count": 9,
+    "last_flush_reason": "shutdown",
+    "writer_ok": true,
+    "writer_error": null
+  },
+  "summary_only_run": {
+    "event_file": "ESZ6.CME_RITHMIC_20261008_045112_785.ndjson.gz",
+    "summary_sha256": "872f060a5437748c168100b32b66e1bdc77569b5e39ea13b5fcb77660c5aef59",
+    "status": "not independently certified; corresponding event file was not provided",
+    "total_records": 771540,
+    "records_persisted": 771540,
+    "orders_open_at_stop": 8400,
+    "writer_ok": true,
+    "application_disk_bytes": 11041710,
+    "application_disk_write_ops": 4,
+    "checkpoint_flush_count": 1
+  },
+  "v0.5_status": "on hold; await project owner feature updates; no v0.5 feature implementation authorized by this evaluation"
+}
