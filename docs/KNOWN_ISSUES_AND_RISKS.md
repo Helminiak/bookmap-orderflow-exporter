@@ -27,3 +27,5 @@ All issues were checked for duplicates; none existed before this closeout. Sever
 No open risk is silently classified as working. Latest source d447a69 has green Windows/Ubuntu CI. PR #6 is draft and merge-clean but not release-approved; unrelated governance PR #1 stays unmerged. Private receiver availability requires separate PRIVATE PR #4 and authorized deployment. No exchange/execution connectivity guarantee exists here.
 
 - Shutdown race now has a failing-before/passing-after controlled regression; native reproduction of the corrected source is pending. Callback admission serialization does not yet bound historical waits or move synchronous shutdown off the Bookmap callback. See validation/2026-10-08-shutdown-regression.md.
+
+- Optional bridge now never waits in exporter callbacks; STOP has reserved capacity and final delivery/uncertainty is reflected in summary after close. RAM-only ACK is explicit. Finite retention exhaustion still invalidates transport; automatic archive-backed replay/resume and bounded asynchronous lifecycle remain release blockers. Interrupted stop now interrupts the writer and writes an explicitly invalid summary when possible.

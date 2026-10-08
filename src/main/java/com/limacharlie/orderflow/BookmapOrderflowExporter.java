@@ -484,7 +484,6 @@ public class BookmapOrderflowExporter
         try {
             synchronized (lifecycleLock) {
                 if (stopped) return;
-                if (bridge != null) bridge.finishHistorical();
                 realtimePhase = true;
                 emitControl("REALTIME_START", "Bookmap historical catch-up completed");
                 uiMessage = "Realtime";
@@ -527,6 +526,7 @@ public class BookmapOrderflowExporter
                                         + ", persisted="
                                         + recordsPersisted));
             }
+            if (bridge != null) bridge.close();
             writeSummary();
             Throwable error = writerError.get();
             if (error != null) {
@@ -536,16 +536,34 @@ public class BookmapOrderflowExporter
             scheduleStatusRefresh(true);
             System.out.println("[OrderflowExporter] complete: " + summaryFile);
         } catch (InterruptedException e) {
+            writerError.compareAndSet(
+                    null, new IllegalStateException("Shutdown interrupted; archive incomplete", e));
+            writerThread.interrupt();
             Thread.currentThread().interrupt();
             uiMessage = "Stop interrupted";
             scheduleStatusRefresh(true);
             throw new IllegalStateException("Interrupted while stopping exporter", e);
+        } catch (IllegalStateException e) {
+            writerError.compareAndSet(null, e);
+            writerThread.interrupt();
+            uiMessage = "Stop failed; export incomplete";
+            scheduleStatusRefresh(true);
+            throw e;
         } catch (IOException e) {
             uiMessage = "Summary write failed: " + e;
             scheduleStatusRefresh(true);
             throw new IllegalStateException("Unable to write exporter summary", e);
         } finally {
-            if (owner && bridge != null) bridge.close();
+            if (owner) {
+                if (bridge != null) bridge.close();
+                if (writerError.get() != null) {
+                    try {
+                        writeSummary();
+                    } catch (IOException summaryFailure) {
+                        writerError.get().addSuppressed(summaryFailure);
+                    }
+                }
+            }
         }
     }
 
@@ -1104,9 +1122,9 @@ public class BookmapOrderflowExporter
     /** Strict historical extraction; LIVE queue overflow fails the archive instead of waiting. */
     private void enqueue(CanonicalEvent event) {
         if (bridge != null) {
-            // Lifecycle STOP must not wait up to ten seconds for historical ACK capacity.
-            if (realtimePhase || stopped) bridge.offer(event);
-            else bridge.offerHistorical(event);
+            // Receiver availability never blocks acquisition, including HISTORY catch-up.
+            if (stopped) bridge.offerTerminal(event);
+            else bridge.offer(event);
         }
         boolean responsive = realtimePhase && settings.responsiveLiveJournal;
         Throwable error = writerError.get();

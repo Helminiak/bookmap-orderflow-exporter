@@ -25,7 +25,10 @@ public final class LiveBridge implements AutoCloseable {
     private final ConcurrentLinkedQueue<CanonicalEvent> queue = new ConcurrentLinkedQueue<>();
     private final AtomicInteger depth = new AtomicInteger(), high = new AtomicInteger();
     private final AtomicLong overflows = new AtomicLong();
-    private volatile boolean running = true, invalid;
+    private volatile boolean running = true, invalid, sealed;
+    private volatile long lastOfferedSeq;
+    private final java.util.concurrent.atomic.AtomicBoolean closing =
+            new java.util.concurrent.atomic.AtomicBoolean();
     private volatile String reason = "", state = "STARTING", receiver = "none";
     private volatile long discarded,
             dropped,
@@ -72,14 +75,25 @@ public final class LiveBridge implements AutoCloseable {
      * No queue waits, network, JSON or disk I/O. CAS reservation bounds queued + in-flight memory.
      */
     public boolean offer(CanonicalEvent event) {
-        if (invalid || !running) {
+        return retain(event, false);
+    }
+
+    /** One extra terminal slot is reserved independently of the data retention budget. */
+    public boolean offerTerminal(CanonicalEvent event) {
+        return retain(event, true);
+    }
+
+    private boolean retain(CanonicalEvent event, boolean terminal) {
+        lastOfferedSeq = Math.max(lastOfferedSeq, event.seq);
+        if (invalid || !running || sealed) {
             dropped++;
             return false;
         }
+        if (terminal) sealed = true;
         int n;
         do {
             n = depth.get();
-            if (n >= capacity) {
+            if ((long) n >= (long) capacity + (terminal ? 1L : 0L)) {
                 overflows.incrementAndGet();
                 invalidate("outbound buffer overflow");
                 return false;
@@ -97,7 +111,7 @@ public final class LiveBridge implements AutoCloseable {
             if (Thread.currentThread().isInterrupted() || System.nanoTime() >= deadline) {
                 invalidate(
                         "historical receiver backpressure timeout; start receiver then fresh"
-                            + " START");
+                                + " START");
                 return false;
             }
             java.util.concurrent.locks.LockSupport.parkNanos(100_000L);
@@ -215,6 +229,15 @@ public final class LiveBridge implements AutoCloseable {
                 + sendFailures
                 + ",\"reconnects\":"
                 + reconnects
+                + ",\"last_offered_seq\":"
+                + lastOfferedSeq
+                + ",\"delivery_complete\":"
+                + (sealed && !running && !invalid && acknowledged == lastOfferedSeq)
+                + ",\"ack_guarantee\":\"receiver_validated_in_memory_not_durable\""
+                + ",\"unconfirmed_from_seq\":"
+                + (invalid && lastOfferedSeq > acknowledged ? acknowledged + 1 : 0)
+                + ",\"unconfirmed_through_seq\":"
+                + (invalid && lastOfferedSeq > acknowledged ? lastOfferedSeq : 0)
                 + ",\"journal\":"
                 + journalHealth.get()
                 + "}";
@@ -296,8 +319,13 @@ public final class LiveBridge implements AutoCloseable {
                 if (health.recv(ZMQ.DONTWAIT) != null) health.send(status(), ZMQ.DONTWAIT);
                 if (invalid) {
                     state = "INVALID";
-                    discarded += depth.getAndSet(0);
-                    queue.clear();
+                    CanonicalEvent discardedEvent;
+                    while ((discardedEvent = queue.poll()) != null) {
+                        discarded++;
+                        depth.decrementAndGet();
+                    }
+                    discarded += flight.size();
+                    depth.addAndGet(-flight.size());
                     flight.clear();
                 } else if (identity != null && System.nanoTime() - active < 2_000_000_000L) {
                     int batch = 0;
@@ -322,6 +350,15 @@ public final class LiveBridge implements AutoCloseable {
             }
         } catch (Throwable failure) {
             invalidate("publisher failure: " + failure);
+        } finally {
+            CanonicalEvent remainder;
+            while ((remainder = queue.poll()) != null) {
+                discarded++;
+                depth.decrementAndGet();
+            }
+            discarded += flight.size();
+            depth.addAndGet(-flight.size());
+            flight.clear();
         }
     }
 
@@ -366,17 +403,20 @@ public final class LiveBridge implements AutoCloseable {
      */
     @Override
     public void close() {
+        if (!closing.compareAndSet(false, true)) return;
         long deadline = System.nanoTime() + 1_000_000_000L;
         while (!invalid && depth.get() > 0 && System.nanoTime() < deadline)
             java.util.concurrent.locks.LockSupport.parkNanos(1_000_000L);
         if (depth.get() > 0) invalidate("shutdown with unacknowledged events");
         running = false;
+        if (!invalid) state = "STOPPED";
         // Interrupting the worker can abort JeroMQ context termination before both ports
         // are released. Wake its short park without setting the interrupt flag.
         java.util.concurrent.locks.LockSupport.unpark(worker);
         if (Thread.currentThread() != worker) {
             try {
                 worker.join(1500);
+                if (worker.isAlive()) invalidate("publisher shutdown deadline exceeded");
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             }

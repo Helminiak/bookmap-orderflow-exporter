@@ -7,6 +7,38 @@ import org.zeromq.*;
 
 class BridgeHealthQueryTest {
     @Test
+    void terminalAckWithinRetentionBudgetCompletesSession() throws Exception {
+        int market = ExporterTest.freePort(), health = ExporterTest.freePort();
+        var bridge = new LiveBridge("127.0.0.1", market, health, 1, "SYNTH", .25, () -> "{}");
+        try (var context = new ZContext()) {
+            assertTrue(bridge.offer(new CanonicalEvent(1, 1, () -> "{\"seq\":1}")));
+            assertTrue(bridge.offerTerminal(new CanonicalEvent(2, 2, () -> "{\"seq\":2}")));
+            var receiver = context.createSocket(SocketType.DEALER);
+            receiver.setLinger(0);
+            receiver.setReceiveTimeOut(2000);
+            receiver.connect("tcp://127.0.0.1:" + market);
+            receiver.send("HELLO owner 0");
+            assertTrue(receiver.recvStr().contains("WELCOME"));
+            assertTrue(receiver.recvStr().contains("\"seq\":1"));
+            assertTrue(receiver.recvStr().contains("\"seq\":2"));
+            receiver.send("ACK owner 2");
+            long deadline = System.nanoTime() + 2_000_000_000L;
+            while (bridge.depth() != 0 && System.nanoTime() < deadline) Thread.sleep(1);
+            assertEquals(0, bridge.depth());
+            bridge.close();
+            assertTrue(bridge.status().contains("\"delivery_complete\":true"));
+            assertTrue(bridge.status().contains("\"state\":\"STOPPED\""));
+            assertTrue(
+                    bridge.status()
+                            .contains(
+                                    "\"ack_guarantee\":\"receiver_validated_in_memory_not_durable\""));
+            assertFalse(bridge.invalid());
+        } finally {
+            bridge.close();
+        }
+    }
+
+    @Test
     void probeReadsHealthWithoutRegisteringAReceiver() throws Exception {
         int market = ExporterTest.freePort(), health = ExporterTest.freePort();
         var bridge =
