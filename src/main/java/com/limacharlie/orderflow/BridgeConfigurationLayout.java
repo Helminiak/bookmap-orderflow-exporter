@@ -6,6 +6,39 @@ import javax.swing.*;
 
 /** Preserve the original equal-height settings rows except for the wrapping network row. */
 final class BridgeConfigurationLayout {
+    /** A long network label must fit the host width even with larger system fonts. */
+    static final class NetworkLabel extends JLabel {
+        private final String plainText;
+
+        NetworkLabel(String text) {
+            super("<html>" + text + "</html>");
+            plainText = text;
+        }
+
+        @Override
+        public Dimension getPreferredSize() {
+            Dimension natural = super.getPreferredSize();
+            Container row = getParent();
+            if (row == null || row.getParent() == null) return natural;
+            int available = row.getParent().getWidth();
+            if (available <= 0) return natural;
+            FlowLayout flow = (FlowLayout) row.getLayout();
+            Insets insets = row.getInsets();
+            available = Math.max(1, available - insets.left - insets.right - 2 * flow.getHgap());
+            int naturalWidth =
+                    plainText == null
+                            ? natural.width
+                            : getFontMetrics(getFont()).stringWidth(plainText);
+            int width = Math.min(naturalWidth, available);
+            var view =
+                    (javax.swing.text.View)
+                            getClientProperty(javax.swing.plaf.basic.BasicHTML.propertyKey);
+            view.setSize(width, 0);
+            return new Dimension(
+                    width, (int) Math.ceil(view.getPreferredSpan(javax.swing.text.View.Y_AXIS)));
+        }
+    }
+
     static final class NetworkRow extends JPanel {
         NetworkRow() {
             super(new FlowLayout(FlowLayout.LEFT));

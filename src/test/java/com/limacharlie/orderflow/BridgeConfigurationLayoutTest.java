@@ -33,6 +33,33 @@ class BridgeConfigurationLayoutTest {
     }
 
     @Test
+    void longCapacityLabelWrapsAndExpandsWithHostWidth() throws Exception {
+        SwingUtilities.invokeAndWait(
+                () -> {
+                    var fields = new BridgeConfigurationLayout.Fields();
+                    var row = new BridgeConfigurationLayout.NetworkRow();
+                    var label =
+                            new BridgeConfigurationLayout.NetworkLabel(
+                                    "Unacknowledged bridge event capacity:");
+                    label.setFont(label.getFont().deriveFont(18f));
+                    row.add(label);
+                    row.add(new JSpinner(new SpinnerNumberModel(100000, 1, 5000000, 1000)));
+                    fields.add(row);
+                    fields.setSize(200, 1);
+                    fields.setSize(200, fields.getPreferredSize().height);
+                    layout(fields);
+                    var narrow = label.getSize();
+                    assertTrue(narrow.height > label.getFontMetrics(label.getFont()).getHeight());
+                    assertTrue(label.getX() + narrow.width <= row.getWidth());
+                    fields.setSize(800, fields.getPreferredSize().height);
+                    fields.setSize(800, fields.getPreferredSize().height);
+                    layout(fields);
+                    assertTrue(label.getHeight() < narrow.height);
+                    assertTrue(label.getWidth() > narrow.width);
+                });
+    }
+
+    @Test
     void wrappedNetworkFitsWithoutMovingOtherRowsHorizontally() throws Exception {
         UIManager.setLookAndFeel(
                 System.getProperty("os.name").startsWith("Windows")

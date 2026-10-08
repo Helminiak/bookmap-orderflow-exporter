@@ -632,7 +632,9 @@ public class BookmapOrderflowExporter
         bridgeRow.add(healthSpinner);
         fields.add(bridgeRow);
         JPanel bridgeQueueRow = new BridgeConfigurationLayout.NetworkRow();
-        bridgeQueueRow.add(new JLabel("Unacknowledged bridge event capacity:"));
+        bridgeQueueRow.add(
+                new BridgeConfigurationLayout.NetworkLabel(
+                        "Unacknowledged bridge event capacity:"));
         bridgeQueueRow.add(bridgeQueueSpinner);
         fields.add(bridgeQueueRow);
 

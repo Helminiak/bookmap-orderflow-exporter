@@ -130,7 +130,17 @@ class ExporterTabsTest {
                                                         <= network.getHeight());
                                         assertTrue(
                                                 control.getX() + control.getWidth()
-                                                        <= network.getWidth());
+                                                        <= network.getWidth(),
+                                                "width="
+                                                        + width
+                                                        + " scale="
+                                                        + scale
+                                                        + " control="
+                                                        + control.getClass().getSimpleName()
+                                                        + " bounds="
+                                                        + control.getBounds()
+                                                        + " row="
+                                                        + network.getSize());
                                     }
                             }
                             assertTrue(fields.getY() + lastBottom <= apply.getY());
@@ -158,6 +168,18 @@ class ExporterTabsTest {
                                                     JButton.class,
                                                     "Installation / help")
                                             .isEnabled());
+                            tabs.setSelectedIndex(2);
+                            BridgeConfigurationLayoutTest.layout(outerScroll);
+                            var infoText =
+                                    find((Container) tabs.getComponentAt(2), JTextArea.class, null);
+                            assertTrue(
+                                    infoText.getHeight()
+                                            >= infoText.getUI()
+                                                    .getRootView(infoText)
+                                                    .getPreferredSpan(javax.swing.text.View.Y_AXIS),
+                                    "wrapped Information text must remain fully readable");
+                            tabs.setSelectedIndex(0);
+                            BridgeConfigurationLayoutTest.layout(outerScroll);
                             String out = System.getenv("ORDERFLOW_TAB_PREVIEWS");
                             if (out != null && width == 560) {
                                 try {
