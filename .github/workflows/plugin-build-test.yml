@@ -1,0 +1,51 @@
+name: Plugin Build Test
+
+on:
+  push:
+    branches:
+      - main
+      - 'ci/**'
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10'
+
+      - name: Compile and package Bookmap addon
+        run: gradle --no-daemon clean jar
+
+      - name: Validate Python validator syntax
+        run: python -m py_compile tools/validate_export.py
+
+      - name: Inspect packaged JAR
+        shell: bash
+        run: |
+          test -f build/libs/bookmap-orderflow-exporter-v0.1.jar
+          jar tf build/libs/bookmap-orderflow-exporter-v0.1.jar | grep 'com/limacharlie/orderflow/BookmapOrderflowExporter.class'
+
+      - name: Upload JAR
+        uses: actions/upload-artifact@v4
+        with:
+          name: bookmap-orderflow-exporter-v0.1-${{ matrix.os }}
+          path: build/libs/bookmap-orderflow-exporter-v0.1.jar
+          if-no-files-found: error
