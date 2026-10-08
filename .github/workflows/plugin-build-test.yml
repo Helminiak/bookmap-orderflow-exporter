@@ -5,7 +5,8 @@ on:
     branches:
       - main
       - 'ci/**'
-      - 'v0.4/**'
+      - 'v0.5/**'
+      - 'feature/**'
   pull_request:
   workflow_dispatch:
 
@@ -33,7 +34,7 @@ jobs:
           gradle-version: '8.10'
 
       - name: Compile and package Bookmap addon
-        run: gradle --no-daemon clean jar
+        run: gradle --no-daemon clean test jar writeFixtureClasspath
 
       - name: Set up Python 3.12
         uses: actions/setup-python@v5
@@ -46,12 +47,14 @@ jobs:
       - name: Inspect packaged JAR
         shell: bash
         run: |
-          test -f build/libs/bookmap-orderflow-exporter-v0.4.jar
-          jar tf build/libs/bookmap-orderflow-exporter-v0.4.jar | grep 'com/limacharlie/orderflow/BookmapOrderflowExporter.class'
+          test -f build/libs/bookmap-orderflow-exporter-v0.5.jar
+          jar tf build/libs/bookmap-orderflow-exporter-v0.5.jar | grep 'com/limacharlie/orderflow/BookmapOrderflowExporter.class'
+          jar tf build/libs/bookmap-orderflow-exporter-v0.5.jar | grep 'org/zeromq/ZMQ.class'
+          jar tf build/libs/bookmap-orderflow-exporter-v0.5.jar | grep 'META-INF/THIRD-PARTY-NOTICES.txt'
 
       - name: Upload JAR
         uses: actions/upload-artifact@v4
         with:
-          name: bookmap-orderflow-exporter-v0.4-${{ matrix.os }}
-          path: build/libs/bookmap-orderflow-exporter-v0.4.jar
+          name: bookmap-orderflow-exporter-v0.5-${{ matrix.os }}
+          path: build/libs/bookmap-orderflow-exporter-v0.5.jar
           if-no-files-found: error

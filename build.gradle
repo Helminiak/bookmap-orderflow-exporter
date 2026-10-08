@@ -3,7 +3,7 @@ plugins {
 }
 
 group = 'com.limacharlie.orderflow'
-version = '0.4.0'
+version = '0.5.0'
 
 sourceCompatibility = JavaVersion.VERSION_17
 targetCompatibility = JavaVersion.VERSION_17
@@ -18,10 +18,25 @@ repositories {
 def bookmapApiVersion = project.findProperty('bookmapApiVersion') ?: '7.6.0.20'
 
 dependencies {
+    implementation 'org.zeromq:jeromq:0.6.0'
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.11.0'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
     compileOnly group: 'com.bookmap.api', name: 'api-core', version: bookmapApiVersion
     compileOnly group: 'com.bookmap.api', name: 'api-simplified', version: bookmapApiVersion
+    testImplementation group: 'com.bookmap.api', name: 'api-core', version: bookmapApiVersion
+    testImplementation group: 'com.bookmap.api', name: 'api-simplified', version: bookmapApiVersion
 }
 
 jar {
-    archiveFileName = 'bookmap-orderflow-exporter-v0.4.jar'
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    from { configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) } }
+    exclude 'META-INF/*.SF', 'META-INF/*.RSA', 'META-INF/*.DSA'
+    archiveFileName = 'bookmap-orderflow-exporter-v0.5.jar'
+}
+
+test { useJUnitPlatform() }
+
+tasks.register('writeFixtureClasspath') {
+    dependsOn testClasses
+    doLast { file("$buildDir/fixture-classpath.txt").text = sourceSets.test.runtimeClasspath.asPath }
 }

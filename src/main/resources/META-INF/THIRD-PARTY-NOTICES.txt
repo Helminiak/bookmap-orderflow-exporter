@@ -1,0 +1,11 @@
+This addon bundles the following unmodified Java dependencies:
+
+JeroMQ 0.6.0 (org.zeromq:jeromq), Mozilla Public License 2.0.
+Source: https://github.com/zeromq/jeromq/tree/v0.6.0
+License: META-INF/licenses/JeroMQ-MPL-2.0.txt
+
+jnacl 1.0.0 (eu.neilalexander:jnacl), BSD-style license.
+Source: https://github.com/neilalexander/jnacl
+License: META-INF/licenses/jnacl-BSD.txt
+
+Bookmap API dependencies are compile-only and are supplied by Bookmap.
