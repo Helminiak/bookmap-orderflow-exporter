@@ -3,7 +3,7 @@ plugins {
 }
 
 group = 'com.limacharlie.orderflow'
-version = '0.2.0'
+version = '0.3.0'
 
 sourceCompatibility = JavaVersion.VERSION_17
 targetCompatibility = JavaVersion.VERSION_17
@@ -23,5 +23,5 @@ dependencies {
 }
 
 jar {
-    archiveFileName = 'bookmap-orderflow-exporter-v0.2.jar'
+    archiveFileName = 'bookmap-orderflow-exporter-v0.3.jar'
 }

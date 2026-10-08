@@ -2,6 +2,43 @@
 
 This project keeps the acquisition layer public and versioned so the development path is visible from the original exporter scaffold through later validation-driven changes. Proprietary entry-quality logic belongs in the separate private `orderflow-entry-engine` repository and is intentionally excluded here.
 
+## [0.3.0] - 2026-10-08
+
+### Changed
+
+- Replaced the fixed 1-second-only flush policy with a hybrid **time OR size** policy.
+- Default maximum flush interval is now 5,000 ms.
+- Default flush threshold is 4 MiB of approximately accumulated uncompressed NDJSON payload.
+- Increased the Java/GZIP/file buffering layer to 4 MiB.
+- The UI now exposes both the maximum flush interval and the size threshold.
+- Live status now shows buffered bytes since the last flush, flush reason, and flush count.
+- The status layout was made more vertical so high-volume counters do not clip at the right edge.
+
+### Rationale
+
+Bookmap's public recorder example explicitly states that its recorder uses internal buffers that are written/finalized when recording is finished, but Bookmap does not publish a fixed recorder flush interval or byte threshold. v0.3 therefore copies the **buffered-recorder architecture**, not an undocumented magic number.
+
+The hybrid policy limits idle-period buffering with a time bound while allowing high-volume periods to flush by accumulated payload size. Java `flush()` is not treated as an `fsync`; Windows and the storage controller remain free to coalesce physical writes.
+
+### Defaults
+
+- writer queue: 1,000,000 records
+- Java/GZIP/file buffer: 4 MiB
+- maximum flush interval: 5 seconds
+- flush threshold: 4 MiB
+- forced durable sync per flush: none
+
+### Validation target
+
+Run v0.3 through a high-volume ES period and verify:
+
+- queue remains near zero,
+- size-triggered flushes occur during bursts,
+- time-triggered flushes occur during quieter periods,
+- file size grows continuously,
+- no sequence gaps or writer errors appear,
+- stop/unload still finalizes the stream and summary cleanly.
+
 ## [0.2.0] - 2026-10-08
 
 ### Added
