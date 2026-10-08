@@ -7,7 +7,8 @@ Purpose: use Bookmap as the decoding layer for historical `.bmf` replay and live
 - **v0.1 runtime validated:** first real Bookmap replay/live capture completed with 519,012 ordered records and a clean writer summary.
 - **v0.2 build verified:** Windows and Ubuntu CI compile/package successfully against Bookmap API `7.6.0.20`.
 - **v0.2 runtime validated:** native settings/status UI and periodic disk flushing were verified in Bookmap with the writer queue at 0% during the observed run.
-- **v0.3 in development:** replaces the 1-second-only flush with a 5-second-or-4-MiB hybrid buffered recorder policy.
+- **v0.3 validated at build/runtime level:** established the configurable buffering/status framework.
+- **v0.4 current:** uses a 4 MiB capacity-driven compressed-output buffer plus a 60-second maximum checkpoint interval, closer to Bookmap's publicly documented buffered-recorder behavior.
 - Development history is intentionally preserved. See [CHANGELOG.md](CHANGELOG.md) and [the first runtime validation record](docs/validation/2026-10-08-v0.1-first-runtime-capture.md).
 
 
@@ -23,17 +24,17 @@ It is deliberately **not** the proprietary entry-quality model, feature engine, 
 
 The downstream private repository is intended to consume the normalized output of this project for feature engineering, auction-state analysis, MBO microstructure analysis, replay research, and entry-quality scoring.
 
-## v0.3 Bookmap UI and buffering
+## v0.4 Bookmap UI and buffering
 
-v0.3 keeps the Bookmap-native configuration/status interface and adds hybrid time-or-size buffering. After enabling **Orderflow Raw Exporter v0.3** for an instrument, open its settings/configuration panel.
+v0.4 keeps the Bookmap-native configuration/status interface but changes disk behavior from an explicit payload threshold to a capacity-driven recorder. After enabling **Orderflow Raw Exporter v0.4** for an instrument, open its settings/configuration panel.
 
 Configurable items:
 
 - output directory
 - run tag
 - writer queue capacity
-- maximum flush interval (500-60,000 ms; default 5,000 ms)
-- buffer flush threshold (1-64 MiB; default 4 MiB)
+- maximum checkpoint interval (5,000-300,000 ms; default 60,000 ms)
+- fixed 4 MiB compressed-output disk buffer (automatically drains when full)
 - export MBO records on/off
 - export trade records on/off
 
@@ -48,8 +49,9 @@ The live status panel shows:
 - writer queue utilization
 - records persisted to the writer
 - current on-disk file size
-- bytes buffered since the previous flush
-- last flush age, reason (time/size/shutdown), and flush count
+- approximate payload accumulated since the previous checkpoint
+- application bytes/write calls handed to the operating system below the 4 MiB buffer
+- last checkpoint age and checkpoint count
 - MBO add/replace/cancel counts
 - trade count
 - number of tracked MBO orders
@@ -105,7 +107,7 @@ gradle clean jar
 Output:
 
 ```text
-build\libs\bookmap-orderflow-exporter-v0.3.jar
+build\libs\bookmap-orderflow-exporter-v0.4.jar
 ```
 
 The project currently pins Bookmap API `7.6.0.20`, matching the official DemoStrategies build configuration used when the initial scaffold was created. If the installed Bookmap release requires another compatible API artifact, change `bookmapApiVersion` in `gradle.properties`.
@@ -114,9 +116,9 @@ The project currently pins Bookmap API `7.6.0.20`, matching the official DemoStr
 
 1. Build or download the JAR.
 2. In Bookmap, open API plugin/add-on configuration.
-3. Add `bookmap-orderflow-exporter-v0.3.jar`.
+3. Add `bookmap-orderflow-exporter-v0.4.jar`.
 4. Open one ES instrument or a `.bmf` replay.
-5. Enable **Orderflow Raw Exporter v0.3** for that instrument.
+5. Enable **Orderflow Raw Exporter v0.4** for that instrument.
 6. Open the addon's settings panel to view/configure the exporter.
 7. For initial validation, replay only a few minutes monotonically.
 8. Disable the addon or close the instrument to flush output and create the summary file.
@@ -134,9 +136,9 @@ The run tag is also configurable in Bookmap. If blank, `ORDERFLOW_RUN_TAG` is us
 
 The historical extraction path uses strict backpressure: when the writer queue fills, the Bookmap callback blocks rather than silently dropping market events. This is intentional for historical extraction correctness. A production low-latency live-stream path may use a different transport design.
 
-v0.3 uses a hybrid buffered-recorder policy. Output is flushed when either the configured maximum interval expires or the configured approximate payload threshold is reached, whichever comes first. Defaults are 5 seconds or 4 MiB. This is a Java/GZIP stream flush, not a forced disk `fsync`, so the operating system and SSD controller can still coalesce physical writes.
+v0.4 uses a capacity-driven buffered-recorder policy. A 4 MiB `BufferedOutputStream` sits below GZIP. During high data volume it writes to the operating system automatically when that compressed-output buffer fills; during quiet periods a configurable maximum checkpoint interval flushes residual buffered data. The default checkpoint interval is 60 seconds. No checkpoint calls `fsync`, so Windows and the SSD controller can still coalesce physical writes.
 
-Bookmap's public Recorder API demo confirms that the Bookmap recorder itself maintains internal buffers that are finalized when recording ends. Bookmap does not publicly document its exact internal flush interval or byte threshold, so this project copies that buffered-recorder design rather than claiming an undocumented Bookmap constant.
+Bookmap's public Recorder API demo states that its recorder keeps internal buffers and requires `recorder.fini()` to write those buffers when recording ends. Bookmap does not publicly document an exact internal write-buffer size or periodic flush interval. This project therefore copies that buffered-recorder architecture—not an undocumented Bookmap constant—and makes our own application-level write behavior observable in the status panel.
 
 ## Output files
 
