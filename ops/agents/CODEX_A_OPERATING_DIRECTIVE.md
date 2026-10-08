@@ -64,3 +64,11 @@ The owner can ask normal ChatGPT: "Review the latest Agent A GitHub PR and docs/
 **Needs explicit owner authorization, no timeout bypass or proxy approval:** Bookmap restart/loaded-JAR replacement while running; live session/broker disruption; credentials/secret distribution; unattended external publication; protected main merge; release/Marketplace submission; financial/trading execution; security boundary expansion; significant model/API spend. A second agent may advise but may not impersonate owner.
 
 All branch/main/PR status and remote SHA observations must be real, current and reported accurately. Preserve public/private intellectual-property boundaries. Do not stop at mere documentation if safe implementation work remains.
+
+## Original “Build Market Snapshot Plugin” design lineage — mandatory
+
+The project began with direct R|Trader Pro connectivity exploration and was deliberately redirected to **Bookmap as the canonical decoder** because the owner has existing historical Bookmap \`.bmf\` files that Bookmap can replay. R|Trader Plugin Mode, when used as Bookmap's live Rithmic provider connection mode, does not authorize a second independent capture/normalization pipeline. The Java add-on is one event-driven Bookmap exporter serving both historical BMF and live MBO, with a single canonical event schema and an optional, nonblocking Linux transport.
+
+Before redesigning ingestion or bridge behavior, read the private companion \`Helminiak/orderflow-entry-engine/docs/architecture/ORIGINAL_MARKET_SNAPSHOT_BRANCH_RECONCILIATION.md\` on governance branch \`docs/accelerated-replay-governance-20261008\` if the private repository is accessible; otherwise document this privacy/access gap rather than copying private research into public Git.
+
+Preserve exact MBO/trade events, identifiers, history/real-time lifecycle and deterministic validation. Derived order-book snapshots/features belong downstream. Quantify buffered flush, disk-write amplification and Bookmap callback/GUI overhead under native matched load; do not claim an arbitrary fixed flush cadence is safe/damaging without data. Prioritize an actionable early missing-Linux-receiver warning and separate archive/bridge validity. Maintain customer-quality packaging and human review gates.
