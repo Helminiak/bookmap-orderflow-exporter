@@ -1,5 +1,15 @@
 # Master engineering handoff — 2026-10-08
 
+## Agent A receiver-warning candidate
+
+Owner-loaded governance directive is on separate unmerged docs/exporter-agent-checkpoints-20261008; original ingestion reconciliation and private role boundaries were read. This work uses isolated feature/agent-a-receiver-warning based on 01f016b54dfbb15b7fa055e8e99260e9e649a6d3. PR6 source/worktree and other-agent branches are preserved.
+
+New persistent nonmodal notice above all tabs immediately distinguishes disabled, waiting, handshake/awaiting ACK, RAM ACK checkpoint, recoverable disconnect and invalid/error. It provides receiver startup and explicit archive-only next-session instructions. No auto-disable, reset of INVALID, protocol/default change or market-callback work is added. A coalescing 1s Swing timer reads approximate volatile diagnostics only while the panel is displayed; unchanged notices are not rewritten. Retention ≥80% is advisory only, not a guaranteed lead time during bursts. The panel is not a global alarm when closed. The candidate displays FOR REVIEW — NOT PRODUCTION APPROVED and links a native review checklist.
+
+Local preliminary Qwen inference actually used the Ubuntu RTX5090 CUDA worker, observed18,462 MiB allocation during a36.3s request,3,434 tokens. All-layer offload/exclusive utilization are not certified. One incorrect HELLO/ACK proposal was rejected. Sanitized provenance is in docs/validation/2026-10-08-agent-a-qwen-verification.json; no credentials/runtime configuration changed.
+
+Local31 Java tests and15 Python3.12 validator tests pass; Swing font-scale previews at1/1.25/1.5 were rendered and inspected, showing complete new notice and network controls. These are not native Bookmap/DPI checks; an existing explanatory configuration label clips in the enlarged-font preview and remains a follow-up. Actual Bookmap installation/restart is prohibited until a safe owner-authorized window. Artifact hashes/exact-head CI and review packet follow after source commit. Native/REALTIME/soak/disk-stall/durability/ChatGPT/release gates remain open. Dashboard8766 stays separate from Agent B8767 and points at this owned worktree. No public release or merge is authorized.
+
 ## Latest verification checkpoint
 
 Storage-fault source `6dd3e01bdb801b1374066d6b655fd3c3d239a6bc` passed all branch Windows/Ubuntu jobs, 27 Java and 15 Python3.12 tests locally, and six final-JAR Java/Python loopback cases. Its PR Ubuntu job exposed a terminal-ACK test startup timeout before WELCOME; the worker binds asynchronously and the test did not observe readiness. The next test-only correction waits for the health endpoint with a bounded deadline, prevents identical test port selection, and reports publisher status on absent frames. It does not retry terminal delivery or change protocol/production code. Re-run both CI matrices for the new exact head.

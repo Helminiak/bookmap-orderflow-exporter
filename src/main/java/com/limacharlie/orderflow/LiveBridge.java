@@ -154,6 +154,29 @@ public final class LiveBridge implements AutoCloseable {
                 + "\"";
     }
 
+    /** Approximate UI diagnostics only; not an atomic archive or delivery certificate. */
+    record OperatorSnapshot(
+            String state,
+            boolean invalid,
+            String reason,
+            boolean registered,
+            long acknowledged,
+            int depth,
+            int capacity,
+            long offered) {}
+
+    OperatorSnapshot operatorSnapshot() {
+        return new OperatorSnapshot(
+                state,
+                invalid,
+                reason,
+                !receiver.equals("none"),
+                acknowledged,
+                depth.get(),
+                capacity,
+                lastOfferedSeq);
+    }
+
     public String display() {
         double seconds = Math.max(.001, (System.nanoTime() - started) / 1e9);
         return state
