@@ -4,6 +4,7 @@ Status: **Governance proposal under draft PR #13**; no native review or release 
 
 ## Primary review entrypoints
 - [Codex A GitHub operating directive](../../ops/agents/CODEX_A_OPERATING_DIRECTIVE.md)
+- [Original project decision lineage (PRIVATE companion, authorized reviewers only)](https://github.com/Helminiak/orderflow-entry-engine/blob/docs/accelerated-replay-governance-20261008/docs/architecture/ORIGINAL_MARKET_SNAPSHOT_BRANCH_RECONCILIATION.md) — Bookmap canonical decoder for BMF and live MBO; R|Trader Pro direct ingress is historical, not a second active pipeline
 - [Agent A checkpoint and receiver-warning protocol](../AGENT_A_GITHUB_CHECKPOINT_AND_REVIEW.md)
 - [Existing exporter draft PR #6](https://github.com/Helminiak/bookmap-orderflow-exporter/pull/6)
 - [Known issues and risks](../KNOWN_ISSUES_AND_RISKS.md)
