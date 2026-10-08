@@ -19,3 +19,5 @@ No new SHA-bound AGENT_A_*_REVIEW.md has been produced by this governance PR. Th
 Ask ChatGPT: “Review the current Bookmap exporter PR and this GitHub review index through my connected GitHub account. Inspect the exact diffs, changed source, tests, native acceptance evidence, human-factors failure/recovery states and the public engineering protocol. Give engineering defects and suggestions with file/line/SHA and label what is untested. Do not treat test PASS as native or Marketplace acceptance.”
 
 Do not post private ES entry-quality research, unlicensed captures or credentials here.
+
+- [Agent A token-exhaustion checkpoint and zero-context recovery](../../ops/agents/TOKEN_EXHAUSTION_RECOVERY.md) — verified GitHub preservation before session limit; shortest post-reset restart
