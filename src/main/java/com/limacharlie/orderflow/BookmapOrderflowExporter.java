@@ -55,13 +55,13 @@ import velox.gui.StrategyPanel;
 /**
  * Raw Bookmap MBO/trade exporter for the Orderflow project.
  *
- * v0.2 adds a Bookmap-native configuration/status UI while preserving the
+ * v0.3 adds hybrid time-or-size buffered flushing while preserving the
  * v0.1 raw event schema.
  *
  * This module intentionally performs no trading and no feature engineering.
  */
 @Layer1SimpleAttachable
-@Layer1StrategyName("Orderflow Raw Exporter v0.2")
+@Layer1StrategyName("Orderflow Raw Exporter v0.3")
 @Layer1ApiVersion(Layer1ApiVersionValue.VERSION2)
 public class BookmapOrderflowExporter implements
         CustomModule,
@@ -76,9 +76,13 @@ public class BookmapOrderflowExporter implements
     private static final int DEFAULT_QUEUE_CAPACITY = 1_000_000;
     private static final int MIN_QUEUE_CAPACITY = 10_000;
     private static final int MAX_QUEUE_CAPACITY = 5_000_000;
-    private static final int DEFAULT_FLUSH_INTERVAL_MS = 1_000;
-    private static final int MIN_FLUSH_INTERVAL_MS = 100;
-    private static final int MAX_FLUSH_INTERVAL_MS = 10_000;
+    private static final int DEFAULT_FLUSH_INTERVAL_MS = 5_000;
+    private static final int MIN_FLUSH_INTERVAL_MS = 500;
+    private static final int MAX_FLUSH_INTERVAL_MS = 60_000;
+    private static final int DEFAULT_FLUSH_THRESHOLD_MIB = 4;
+    private static final int MIN_FLUSH_THRESHOLD_MIB = 1;
+    private static final int MAX_FLUSH_THRESHOLD_MIB = 64;
+    private static final int IO_BUFFER_BYTES = 4 * 1024 * 1024;
     private static final long STATUS_REFRESH_INTERVAL_NS = 250_000_000L;
     private static final DateTimeFormatter FILE_TS =
             DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss_SSS").withZone(ZoneOffset.UTC);
@@ -89,6 +93,7 @@ public class BookmapOrderflowExporter implements
         public String runTag = "";
         public int queueCapacity = DEFAULT_QUEUE_CAPACITY;
         public int flushIntervalMs = DEFAULT_FLUSH_INTERVAL_MS;
+        public int flushThresholdMiB = DEFAULT_FLUSH_THRESHOLD_MIB;
         public boolean exportMbo = true;
         public boolean exportTrades = true;
     }
@@ -131,7 +136,12 @@ public class BookmapOrderflowExporter implements
     private Thread writerThread;
     private int effectiveQueueCapacity = DEFAULT_QUEUE_CAPACITY;
     private int effectiveFlushIntervalMs = DEFAULT_FLUSH_INTERVAL_MS;
+    private int effectiveFlushThresholdMiB = DEFAULT_FLUSH_THRESHOLD_MIB;
+    private long effectiveFlushThresholdBytes = DEFAULT_FLUSH_THRESHOLD_MIB * 1024L * 1024L;
     private volatile long recordsPersisted = 0L;
+    private volatile long approxUnflushedBytes = 0L;
+    private volatile long flushCount = 0L;
+    private volatile String lastFlushReason = "pending";
     private volatile long lastFlushEpochMs = 0L;
 
     private volatile JLabel statusLabel;
@@ -165,6 +175,9 @@ public class BookmapOrderflowExporter implements
 
             effectiveQueueCapacity = clamp(settings.queueCapacity, MIN_QUEUE_CAPACITY, MAX_QUEUE_CAPACITY);
             effectiveFlushIntervalMs = clamp(settings.flushIntervalMs, MIN_FLUSH_INTERVAL_MS, MAX_FLUSH_INTERVAL_MS);
+            effectiveFlushThresholdMiB = clamp(
+                    settings.flushThresholdMiB, MIN_FLUSH_THRESHOLD_MIB, MAX_FLUSH_THRESHOLD_MIB);
+            effectiveFlushThresholdBytes = effectiveFlushThresholdMiB * 1024L * 1024L;
             queue = new ArrayBlockingQueue<>(effectiveQueueCapacity);
             startWriter();
 
@@ -202,6 +215,9 @@ public class BookmapOrderflowExporter implements
         timeReversals = 0L;
         openOrderCount = 0;
         recordsPersisted = 0L;
+        approxUnflushedBytes = 0L;
+        flushCount = 0L;
+        lastFlushReason = "pending";
         lastFlushEpochMs = 0L;
         lastMboEvent = "No MBO event received yet";
         lastTradeEvent = "No trade received yet";
@@ -414,10 +430,20 @@ public class BookmapOrderflowExporter implements
                 clamp(settings.flushIntervalMs, MIN_FLUSH_INTERVAL_MS, MAX_FLUSH_INTERVAL_MS),
                 MIN_FLUSH_INTERVAL_MS,
                 MAX_FLUSH_INTERVAL_MS,
-                100));
-        flushRow.add(new JLabel("Disk flush interval (ms): "));
+                500));
+        flushRow.add(new JLabel("Maximum flush interval (ms): "));
         flushRow.add(flushSpinner);
         fields.add(flushRow);
+
+        JPanel thresholdRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
+        JSpinner thresholdSpinner = new JSpinner(new SpinnerNumberModel(
+                clamp(settings.flushThresholdMiB, MIN_FLUSH_THRESHOLD_MIB, MAX_FLUSH_THRESHOLD_MIB),
+                MIN_FLUSH_THRESHOLD_MIB,
+                MAX_FLUSH_THRESHOLD_MIB,
+                1));
+        thresholdRow.add(new JLabel("Buffer flush threshold (MiB): "));
+        thresholdRow.add(thresholdSpinner);
+        fields.add(thresholdRow);
 
         JLabel applyNote = new JLabel(
                 "<html>Apply restarts this exporter instance and starts a new output file.</html>");
@@ -449,6 +475,7 @@ public class BookmapOrderflowExporter implements
             settings.runTag = tagField.getText().trim();
             settings.queueCapacity = ((Number) queueSpinner.getValue()).intValue();
             settings.flushIntervalMs = ((Number) flushSpinner.getValue()).intValue();
+            settings.flushThresholdMiB = ((Number) thresholdSpinner.getValue()).intValue();
             api.setSettings(settings);
             api.reload();
         });
@@ -544,20 +571,26 @@ public class BookmapOrderflowExporter implements
             b.append("<b>Mode:</b> ").append(phase()).append("<br/>");
             b.append("<b>Status:</b> ").append(error == null ? html(uiMessage) : "WRITER ERROR").append("<br/>");
             b.append("<b>Market/replay time:</b> ").append(html(formatMarketTime(marketNs))).append("<br/>");
-            b.append("<b>Output:</b> ").append(html(eventFile == null ? "not initialized" : eventFile.toString())).append("<br/>");
+            b.append("<b>Output file:</b> ")
+                    .append(html(eventFile == null ? "not initialized" : eventFile.getFileName().toString()))
+                    .append("<br/>");
             b.append("<b>On-disk size:</b> ").append(formatFileSize(currentFileSize())).append("<br/>");
-            b.append("<b>Persisted records:</b> ").append(recordsPersisted)
-                    .append(" &nbsp; Last flush: ").append(formatFlushAge()).append("<br/>");
+            b.append("<b>Persisted records:</b> ").append(recordsPersisted).append("<br/>");
+            b.append("<b>Buffered since flush:</b> ").append(formatFileSize(approxUnflushedBytes))
+                    .append(" / ").append(formatFileSize(effectiveFlushThresholdBytes)).append("<br/>");
+            b.append("<b>Last flush:</b> ").append(formatFlushAge())
+                    .append(" (").append(html(lastFlushReason)).append(")")
+                    .append(" &nbsp; count=").append(flushCount).append("<br/>");
             b.append("<b>Queue:</b> ").append(queueSize).append(" / ").append(queueCapacity)
                     .append(String.format(" (%.2f%%)", fill)).append("<br/><br/>");
 
             b.append("<b>Received events</b><br/>");
-            b.append("MBO add: ").append(mboAdds)
-                    .append(" &nbsp; replace: ").append(mboReplaces)
-                    .append(" &nbsp; cancel: ").append(mboCancels)
-                    .append(" &nbsp; trades: ").append(trades).append("<br/>");
+            b.append("MBO add: ").append(mboAdds).append("<br/>");
+            b.append("MBO replace: ").append(mboReplaces).append("<br/>");
+            b.append("MBO cancel: ").append(mboCancels).append("<br/>");
+            b.append("Trade callbacks: ").append(trades).append("<br/>");
             b.append("Open MBO orders tracked: ").append(openOrderCount).append("<br/>");
-            b.append("Records written/enqueued: ").append(sequence).append("<br/><br/>");
+            b.append("Callbacks enqueued: ").append(sequence).append("<br/><br/>");
 
             b.append("<b>Integrity counters</b><br/>");
             b.append("Duplicate adds: ").append(duplicateAdds)
@@ -572,9 +605,11 @@ public class BookmapOrderflowExporter implements
                     .append(settings != null && settings.exportMbo)
                     .append(", Trades=")
                     .append(settings != null && settings.exportTrades)
-                    .append(", Flush=")
+                    .append(", Max flush=")
                     .append(effectiveFlushIntervalMs)
-                    .append(" ms, Run tag=")
+                    .append(" ms OR ")
+                    .append(effectiveFlushThresholdMiB)
+                    .append(" MiB, Run tag=")
                     .append(html(effectiveRunTag()));
             if (error != null) {
                 b.append("<br/><b>Writer error:</b> ").append(html(error.toString()));
@@ -597,11 +632,11 @@ public class BookmapOrderflowExporter implements
             try (BufferedWriter out = new BufferedWriter(
                     new OutputStreamWriter(
                             new GZIPOutputStream(
-                                    new BufferedOutputStream(Files.newOutputStream(eventFile), 1 << 20),
-                                    1 << 20,
+                                    new BufferedOutputStream(Files.newOutputStream(eventFile), IO_BUFFER_BYTES),
+                                    IO_BUFFER_BYTES,
                                     true),
                             StandardCharsets.UTF_8),
-                    1 << 20)) {
+                    IO_BUFFER_BYTES)) {
                 while (true) {
                     long waitNs = Math.max(1L, nextFlushNs - System.nanoTime());
                     String line = queue.poll(waitNs, TimeUnit.NANOSECONDS);
@@ -612,17 +647,32 @@ public class BookmapOrderflowExporter implements
                         out.write(line);
                         out.newLine();
                         recordsPersisted++;
+
+                        // NDJSON generated by this addon is overwhelmingly ASCII. Counting UTF-16
+                        // characters avoids allocating a byte[] for every market event while providing
+                        // a conservative-enough trigger for batching. The threshold is a batching
+                        // target, not a durability boundary.
+                        approxUnflushedBytes += line.length() + 1L;
                     }
 
                     long now = System.nanoTime();
-                    if (now >= nextFlushNs) {
+                    boolean sizeDue = approxUnflushedBytes >= effectiveFlushThresholdBytes;
+                    boolean timeDue = now >= nextFlushNs;
+                    if (sizeDue || timeDue) {
                         out.flush();
+                        flushCount++;
+                        lastFlushReason = sizeDue ? "size" : "time";
+                        approxUnflushedBytes = 0L;
                         lastFlushEpochMs = System.currentTimeMillis();
                         scheduleStatusRefresh(true);
                         nextFlushNs = now + flushIntervalNs;
                     }
                 }
+
                 out.flush();
+                flushCount++;
+                lastFlushReason = "shutdown";
+                approxUnflushedBytes = 0L;
                 lastFlushEpochMs = System.currentTimeMillis();
                 scheduleStatusRefresh(true);
             } catch (Throwable t) {
@@ -715,7 +765,7 @@ public class BookmapOrderflowExporter implements
         StringBuilder b = new StringBuilder(1400);
         b.append('{');
         field(b, "schema", SCHEMA).append(',');
-        field(b, "addon_version", "0.2.0").append(',');
+        field(b, "addon_version", "0.3.0").append(',');
         field(b, "alias", alias).append(',');
         rawNumberField(b, "pips", Double.toString(pips)).append(',');
         rawNumberField(b, "multiplier", Double.toString(multiplier)).append(',');
@@ -730,7 +780,11 @@ public class BookmapOrderflowExporter implements
         booleanField(b, "export_mbo", settings.exportMbo).append(',');
         booleanField(b, "export_trades", settings.exportTrades).append(',');
         numberField(b, "queue_capacity", effectiveQueueCapacity).append(',');
-        numberField(b, "flush_interval_ms", effectiveFlushIntervalMs).append(',');
+        numberField(b, "max_flush_interval_ms", effectiveFlushIntervalMs).append(',');
+        numberField(b, "flush_threshold_mib", effectiveFlushThresholdMiB).append(',');
+        numberField(b, "io_buffer_bytes", IO_BUFFER_BYTES).append(',');
+        numberField(b, "flush_count", flushCount).append(',');
+        field(b, "last_flush_reason", lastFlushReason).append(',');
         numberField(b, "records_persisted", recordsPersisted).append(',');
         numberField(b, "duplicate_adds", duplicateAdds).append(',');
         numberField(b, "unknown_replaces", unknownReplaces).append(',');
