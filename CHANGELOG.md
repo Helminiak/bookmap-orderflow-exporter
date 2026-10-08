@@ -2,6 +2,12 @@
 
 This project keeps the acquisition layer public and versioned so the development path is visible from the original exporter scaffold through later validation-driven changes. Proprietary entry-quality logic belongs in the separate private `orderflow-entry-engine` repository and is intentionally excluded here.
 
+## v0.5 configuration/smoke-test follow-up
+
+- Fixed clipped bridge controls by separating labeled rows, fitting viewport width, and adding vertical scrolling with a fixed Apply button.
+- Added a double-click Windows batch launcher and read-only Java health probe in the existing JAR, with PASS/FAIL/INCONCLUSIVE reports.
+- CI tests narrow-layout reachability, real health queries and Windows launcher decisions; packages JAR/scripts/README as a smoke-test ZIP.
+
 ## [0.5.0] - 2026-10-08 (local bridge candidate)
 
 - Integrated an optional JeroMQ ROUTER/DEALER bridge into the existing addon; disabled by default.

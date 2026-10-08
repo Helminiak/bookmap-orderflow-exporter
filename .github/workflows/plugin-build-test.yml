@@ -34,7 +34,7 @@ jobs:
           gradle-version: '8.10'
 
       - name: Compile and package Bookmap addon
-        run: gradle --no-daemon clean test jar writeFixtureClasspath
+        run: gradle --no-daemon clean test jar writeFixtureClasspath smokeTestBundle
 
       - name: Set up Python 3.12
         uses: actions/setup-python@v5
@@ -51,6 +51,18 @@ jobs:
           jar tf build/libs/bookmap-orderflow-exporter-v0.5.jar | grep 'com/limacharlie/orderflow/BookmapOrderflowExporter.class'
           jar tf build/libs/bookmap-orderflow-exporter-v0.5.jar | grep 'org/zeromq/ZMQ.class'
           jar tf build/libs/bookmap-orderflow-exporter-v0.5.jar | grep 'META-INF/THIRD-PARTY-NOTICES.txt'
+
+      - name: Test Windows smoke launcher
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: ./tools/windows/Smoke-Test.Tests.ps1
+
+      - name: Upload smoke-test bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: orderflow-v0.5-smoke-test-${{ matrix.os }}
+          path: build/distributions/orderflow-v0.5-windows-smoke-test.zip
+          if-no-files-found: error
 
       - name: Upload JAR
         uses: actions/upload-artifact@v4
