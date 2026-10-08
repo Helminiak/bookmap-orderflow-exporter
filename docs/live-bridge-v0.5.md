@@ -1,3 +1,5 @@
+> Current state: original two Bookmap panels with localized measured network-row height (d447a69); older tab/enlargement/rollback descriptions below are historical. Use docs/LINUX_BRIDGE.md and HANDOFF_MASTER.md for current recovery/acceptance. A supplied 4,656-event/60s smoke report has now been reviewed; actual Bookmap Windows DPI and sustained slowdown acceptance remain pending.
+
 # Optional live bridge v0.5
 
 One existing Bookmap addon receives each callback once. It copies seq, market_ns, phase, alias, pips and event-specific fields into an immutable `CanonicalEvent`. The journal and publisher independently consume that event. JSON serialization is lazy, on worker threads; a cached canonical string avoids repeat work in the normal case. Concurrent workers may serialize twice, without waiting on each other. No inference or feature engineering is present.
