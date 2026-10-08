@@ -58,3 +58,20 @@ Continue from the most recent VERIFIED checkpoint on the correct agent-owned bra
 ## Why both recovery and steering documents matter
 
 The long-lived operating directive defines **authority**; the mutable steering file defines **current priorities**; the implementation branch and PR define **actual code**; the handoff and exact-SHA review index define **what is verified and what comes next**. No single chat transcript or dashboard status may override contradictory current source/CI evidence. GitHub does not automatically store a model's uncommitted mental context, unpushed files, or unobserved local services.
+
+## Critical correction — exhaustion before a checkpoint prompt
+
+**Observed event:** Owner's Codex five-hour allowance dropped to ~1% and the newly submitted emergency-checkpoint prompt was rejected by the usage-limit gate, before either agent could act on it. A manual chat message when almost out of allowance is *not a viable recovery guarantee*.
+
+**Override the previous “<=15%” trigger as the only safeguard.** Make safe preservation self-initiated, without waiting for a new human prompt:
+- On every completed work item / material file change set, commit reviewed code or clearly marked WIP safely to your owned branch, push and confirm remote SHA.
+- While generating substantive changed code, if ~10–15 minutes elapsed without a verified remote checkpoint, checkpoint *before continuing*. Treat this as a fallback; do not push empty/no-op commits.
+- Before launching expensive long-running analysis, large refactor or extended tests, record an early branch/source/handoff checkpoint first.
+- If an **authoritative** plan usage percentage is available, start wrap-up at <=35%, commit+push at <=25%, enter checkpoint-only at <=15%. Do not rely on a final one-percent request to run.
+- When no official account usage feed exists, display **QUOTA UNKNOWN** and use the time/change-triggered checkpoint policy. Per-request Qwen tokens are unrelated to plan quota. Official account view: ChatGPT/Codex Settings → Usage; Codex CLI /status if available in the authenticated CLI session. Do not use undocumented private authentication endpoints or invent plan numbers.
+- On an actual host, an optional local deterministic safety helper can take bounded, private, secret-excluding, atomic Git worktree/patch snapshots **without requiring a Codex inference request**. Never silently publish unreviewed private data, passwords, licensed BMF captures or unknown untracked files. Preserve raw diff only when access controls and exclusions are validated. Persistent unattended operation requires separate owner authorization and test evidence.
+- Distinguish **LOCAL SAVED**, **COMMIT CREATED**, **PUSH VERIFIED**, and **REVIEW ACCEPTED**. These are not synonyms. A merely running GitHub observer/dashboard provides none of those guarantees.
+
+In the first post-reset session, fetch the current remote PR head, inspect local dirty/untracked/independent worktrees, reconcile, and resume only from evidence. Do not assume last known dashboard SHA is latest. **Do not use missing usage-monitor access as an excuse to stop safe coding or safe periodic checkpointing.**
+
+Additional project acceptance and issue-specific requirements: docs/BOOKMAP_REVIEW_UX_AND_NATIVE_INSTALL_GATES.md
