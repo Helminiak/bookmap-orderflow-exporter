@@ -2,6 +2,12 @@
 
 This project keeps the acquisition layer public and versioned so the development path is visible from the original exporter scaffold through later validation-driven changes. Proprietary entry-quality logic belongs in the separate private `orderflow-entry-engine` repository and is intentionally excluded here.
 
+## UI tab follow-up — 2026-10-08 (candidate, native acceptance pending)
+
+- After nightly notes, owner requested tabs because configuration was hidden. Return one Bookmap panel with Configuration first and Live status second.
+- Retain measured network-row layout/settings listener; independently scroll configuration/status with action buttons outside scrolling. No exporter/default/transport change.
+- Add short-height/font-scale and Apply/save/reload regression coverage. See docs/UI_TAB_FOLLOWUP_2026-10-08.md; native Bookmap visual verification remains pending.
+
 ## Engineering checkpoint — 2026-10-08 (0.5.0 candidate, not release)
 
 - Localized network-row clipping corrected at d447a69: original two panels, measured wrapped row height, other-row baseline/spacing preserved and as-needed vertical settings scroll. No exporter/default/status changes.

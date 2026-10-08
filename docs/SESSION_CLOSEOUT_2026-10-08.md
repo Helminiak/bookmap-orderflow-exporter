@@ -31,3 +31,7 @@ Publication uses grouped benchmark/evidence and engineering-handoff commits, nor
 Native Bookmap DPI, sustained heavy-load phase-separated slowdown, exceptional shutdown/storage failure tests, callback threading/coherent snapshots, retained heap/GC saturation, authenticated network protection, cross-process snapshots/resume and repeated-BMF initial-state/provider completeness remain open. Shutdown cleanup is a reviewed defect, not fixed by closeout. Full licensed BMF inventory, one summary's paired archive, exact smoke JAR hash, original smoke file at closeout, full private candidate acceptance and some early quantitative design rationale are unavailable. No fabricated tests/results or durability claims replace them.
 
 Resume by reading AGENTS/HANDOFF_MASTER, fetching safely, inspecting current branch/CI, then taking one scoped risk issue. Top five tasks and milestone acceptance are in ROADMAP. Closeout authorization ends at the synchronized engineering checkpoint.
+
+## Subsequent owner authorization
+
+Nightly checkpoint d9da782b052b67b6d151c1198305b22f4cbf29fc was pushed and Windows/Ubuntu CI passed (37750909614 / 37750902487). The owner then authorized another UI attempt with Live status on a tab because configuration was hidden. This extends the original stop condition only for that UI task. See UI_TAB_FOLLOWUP_2026-10-08.md and the current-state/master pointers; the earlier two-panel descriptions in this record refer to the nightly baseline. No new exporter behavior or private features were authorized/implemented.

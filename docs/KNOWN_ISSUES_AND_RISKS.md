@@ -1,3 +1,5 @@
+> Latest authorized UI: one Orderflow exporter host with Configuration/Live status tabs; Configuration selected first, scrollable contents and fixed action buttons. Earlier two-panel/rollback descriptions below are historical anchors. See [UI follow-up](UI_TAB_FOLLOWUP_2026-10-08.md) for current build, 15 Java tests and native morning acceptance still pending.
+
 # Known issues and risk register — 2026-10-08
 
 All issues were checked for duplicates; none existed before this closeout. Severity H blocks broad release acceptance; M requires scoped acceptance/mitigation; L is maintenance. Reviewed risk is not a claim of reproduced failure.

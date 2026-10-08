@@ -1,3 +1,5 @@
+> Latest authorized UI: one Orderflow exporter host with Configuration/Live status tabs; Configuration selected first, scrollable contents and fixed action buttons. Earlier two-panel/rollback descriptions below are historical anchors. See [UI follow-up](UI_TAB_FOLLOWUP_2026-10-08.md) for current build, 15 Java tests and native morning acceptance still pending.
+
 > Current state: original two Bookmap panels with localized measured network-row height (d447a69); older tab/enlargement/rollback descriptions below are historical. Use docs/LINUX_BRIDGE.md and HANDOFF_MASTER.md for current recovery/acceptance. A supplied 4,656-event/60s smoke report has now been reviewed; actual Bookmap Windows DPI and sustained slowdown acceptance remain pending.
 
 # Optional live bridge v0.5

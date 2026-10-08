@@ -5,9 +5,11 @@ Public acquisition and canonical MBO/trade normalization for Bookmap BMF replay 
 ## Current state
 
 - Known validated main baseline: **v0.4.0**, main `2e0c0c79df9801a68ff9c3f3332a2ffff558ee2d`; 786,347-record capture validation is documented, not a universal completeness certificate.
-- Development: **0.5.0 candidate**, `feature/linux-live-bridge`, [draft PR #6](https://github.com/Helminiak/bookmap-orderflow-exporter/pull/6). Optional single-JAR ACKed bridge, responsive LIVE journal and localized network-row height correction are implemented. No merge, release or tag is implied.
+- Development: **0.5.0 candidate**, `feature/linux-live-bridge`, [draft PR #6](https://github.com/Helminiak/bookmap-orderflow-exporter/pull/6). Optional single-JAR ACKed bridge, responsive LIVE journal, measured network-row height and a single panel with Configuration/Live status tabs are implemented. No merge, release or tag is implied.
 - Windows/Ubuntu source, packaging, validator and launcher CI pass on the localized UI source anchor d447a69. Current-head closeout CI/state is reported in PR #6 and [master handoff](HANDOFF_MASTER.md).
 - A supplied physical 60-second smoke report inspected earlier passed for 4,656 new events; separate 57,771-event PASS is owner-reported. Actual Bookmap UI at Windows display DPI, sustained load, phase-separated slowdown and exceptional failure acceptance remain open.
+
+For the latest UI build and morning check, see [UI_TAB_FOLLOWUP_2026-10-08.md](docs/UI_TAB_FOLLOWUP_2026-10-08.md).
 
 Start with [HANDOFF_MASTER.md](HANDOFF_MASTER.md), [AGENTS.md](AGENTS.md), [risk register](docs/KNOWN_ISSUES_AND_RISKS.md) and [session closeout](docs/SESSION_CLOSEOUT_2026-10-08.md).
 
@@ -21,7 +23,7 @@ python -m unittest discover -s tests -v
 python tools/validate_export.py CAPTURE.ndjson.gz --summary CAPTURE.summary.json
 ```
 
-Outputs: `build/libs/bookmap-orderflow-exporter-v0.5.jar`, `build/distributions/orderflow-v0.5-windows-smoke-test.zip`. Close Bookmap before replacing the JAR; install only one exporter addon. Enable **Orderflow Raw Exporter v0.5** for an instrument. Configuration and Live exporter status are separate original Bookmap panels. Network controls retain their original sizes/FlowLayout, with measured wrapping height and as-needed vertical settings scrolling; Apply stays outside scrolling. Apply saves settings/reloads and begins a new file/session.
+Outputs: `build/libs/bookmap-orderflow-exporter-v0.5.jar`, `build/distributions/orderflow-v0.5-windows-smoke-test.zip`. Close Bookmap before replacing the JAR; install only one exporter addon. Enable **Orderflow Raw Exporter v0.5** for an instrument. One **Orderflow exporter** Bookmap panel contains **Configuration** (opens first) and **Live status** tabs. Both scroll when needed; action buttons stay visible. Network controls retain their original sizes/FlowLayout, with measured wrapping height and as-needed vertical settings scrolling; Apply stays outside scrolling. Apply saves settings/reloads and begins a new file/session.
 
 The ZIP contains JAR, BAT, PS1 and README. Keep them together and run BAT on Windows, not PS1 double-click. It discovers Java/LAN health and reports PASS/FAIL/INCONCLUSIVE without registering a second market receiver. The private receiver must be started before opening/enabling a fresh Bookmap bridge session. Full setup/recovery is in [LINUX_BRIDGE.md](docs/LINUX_BRIDGE.md) and [testing/troubleshooting](docs/TESTING_AND_TROUBLESHOOTING.md).
 

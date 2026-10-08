@@ -1,3 +1,5 @@
+> Latest authorized UI: one Orderflow exporter host with Configuration/Live status tabs; Configuration selected first, scrollable contents and fixed action buttons. Earlier two-panel/rollback descriptions below are historical anchors. See [UI follow-up](UI_TAB_FOLLOWUP_2026-10-08.md) for current build, 15 Java tests and native morning acceptance still pending.
+
 # Linux bridge — implemented candidate
 
 One exporter JAR bundles JeroMQ 0.6.0 and jnacl/license notices; Bookmap APIs remain compile-only. No second acquisition plugin or divergent market schema exists. Network code runs on the publisher thread, with DONTWAIT sends, ROUTER/DEALER data and REP/REQ health. Defaults: bridge disabled, bind 0.0.0.0, market TCP 5555, health TCP 5556, unacknowledged capacity 100,000; window 256, socket HWM 512. Use unique port pairs for simultaneous instruments. No auth/TLS exists: restrict enabled endpoints to a trusted private LAN/firewall. Owner tokens are continuity identifiers, not credentials.

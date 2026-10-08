@@ -39,8 +39,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.zip.GZIPOutputStream;
 
-import javax.swing.Box;
-import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JFileChooser;
@@ -48,8 +46,8 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSpinner;
+import javax.swing.JTabbedPane;
 import javax.swing.JTextField;
-import javax.swing.Scrollable;
 import javax.swing.SpinnerNumberModel;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
@@ -532,8 +530,18 @@ public class BookmapOrderflowExporter
 
     private static StrategyPanel[] buildPanels(
             Settings settings, Api api, BookmapOrderflowExporter instance) {
-        StrategyPanel configPanel = new StrategyPanel("Exporter configuration");
-        configPanel.setLayout(new BorderLayout(4, 4));
+        StrategyPanel panel = new StrategyPanel("Orderflow exporter");
+        panel.setLayout(new BorderLayout(4, 4));
+        panel.add(buildExporterTabs(settings, api, instance), BorderLayout.CENTER);
+        setEnabledRecursively(panel, api != null);
+        return new StrategyPanel[] {panel};
+    }
+
+    // Return one Bookmap panel so configuration cannot be hidden behind a second host panel.
+    // Plain Swing tab contents also allow geometry checks without the Bookmap host window.
+    static JTabbedPane buildExporterTabs(
+            Settings settings, Api api, BookmapOrderflowExporter instance) {
+        JPanel configPanel = new JPanel(new BorderLayout(4, 4));
 
         JPanel fields = new BridgeConfigurationLayout.Fields();
 
@@ -619,7 +627,7 @@ public class BookmapOrderflowExporter
         bridgeRow.add(new JLabel("Health port:"));
         bridgeRow.add(healthSpinner);
         fields.add(bridgeRow);
-        JPanel bridgeQueueRow = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        JPanel bridgeQueueRow = new BridgeConfigurationLayout.NetworkRow();
         bridgeQueueRow.add(new JLabel("Unacknowledged bridge event capacity:"));
         bridgeQueueRow.add(bridgeQueueSpinner);
         fields.add(bridgeQueueRow);
@@ -637,6 +645,7 @@ public class BookmapOrderflowExporter
                         JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,
                         JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
         fieldsScroll.setBorder(null);
+        fieldsScroll.setMinimumSize(new java.awt.Dimension(0, 0));
         configPanel.add(fieldsScroll, BorderLayout.CENTER);
         configPanel.add(applyButton, BorderLayout.SOUTH);
 
@@ -675,11 +684,16 @@ public class BookmapOrderflowExporter
                     api.reload();
                 });
 
-        StrategyPanel statusPanel = new StrategyPanel("Live exporter status");
-        statusPanel.setLayout(new BorderLayout(4, 4));
+        JPanel statusPanel = new JPanel(new BorderLayout(4, 4));
         JLabel status = new JLabel();
         status.setVerticalAlignment(SwingConstants.TOP);
-        statusPanel.add(status, BorderLayout.CENTER);
+        JScrollPane statusScroll = new JScrollPane(status);
+        statusScroll.setBorder(null);
+        statusScroll.setMinimumSize(new java.awt.Dimension(0, 0));
+        // Growing HTML diagnostics must scroll rather than enlarge or hide the configuration.
+        statusScroll.getViewport().setPreferredSize(fieldsScroll.getPreferredSize());
+        statusScroll.getVerticalScrollBar().setUnitIncrement(20);
+        statusPanel.add(statusScroll, BorderLayout.CENTER);
 
         JPanel buttons = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
         JButton refreshButton = new JButton("Refresh");
@@ -698,10 +712,12 @@ public class BookmapOrderflowExporter
                     "<html>Enable the exporter for an instrument to see live status.</html>");
         }
 
-        boolean enabled = api != null;
-        setEnabledRecursively(configPanel, enabled);
-        setEnabledRecursively(statusPanel, enabled);
-        return new StrategyPanel[] {configPanel, statusPanel};
+        JTabbedPane tabs = new JTabbedPane();
+        tabs.addTab("Configuration", configPanel);
+        tabs.addTab("Live status", statusPanel);
+        tabs.setSelectedIndex(0);
+        tabs.setMinimumSize(new java.awt.Dimension(0, 0));
+        return tabs;
     }
 
     private static void setEnabledRecursively(java.awt.Component component, boolean enabled) {

@@ -1,3 +1,5 @@
+> Latest authorized UI: one Orderflow exporter host with Configuration/Live status tabs; Configuration selected first, scrollable contents and fixed action buttons. Earlier two-panel/rollback descriptions below are historical anchors. See [UI follow-up](UI_TAB_FOLLOWUP_2026-10-08.md) for current build, 15 Java tests and native morning acceptance still pending.
+
 # Testing and troubleshooting
 
 Tools: JDK 17 (source/target 17), Gradle 8.10 (no wrapper checked in), Python 3.12 standard library for public validator/tests/benchmark. Bookmap API core/simplified 7.6.0.20 pinned in gradle.properties. Runtime Java 17+; owner's Bookmap Java 25 file was identified, but Java 25 is not the full CI matrix. JeroMQ 0.6.0 bundled; API classes excluded. Maven dependencies require network on first build. Linux private receiver uses Python/pyzmq and its own instructions.

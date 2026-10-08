@@ -1,3 +1,5 @@
+> Latest authorized UI: one Orderflow exporter host with Configuration/Live status tabs; Configuration selected first, scrollable contents and fixed action buttons. Earlier two-panel/rollback descriptions below are historical anchors. See [UI follow-up](UI_TAB_FOLLOWUP_2026-10-08.md) for current build, 15 Java tests and native morning acceptance still pending.
+
 # Version history reconstructed from Git
 
 No Git tags or GitHub Releases existed at the 2026-10-08 audit. Software version 0.5.0 is a candidate on feature/linux-live-bridge, not a published release. Main is 2e0c0c79df9801a68ff9c3f3332a2ffff558ee2d, the validated 0.4.0 baseline. Branch names/ZIP names are not releases.
