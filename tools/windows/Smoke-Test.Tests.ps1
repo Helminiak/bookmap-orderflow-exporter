@@ -47,9 +47,13 @@ try {
         }
         # Plain synthetic values contain no cmd expansion/metacharacters.
         Set-Content $fakeJava ("@echo off`r`necho $one`r`n$delay`r`necho $two`r`nexit /b 0`r`n") -Encoding ASCII
-        & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $script -Jar $dummyJar -JavaPath $fakeJava -ReportDirectory $temp -Seconds 5 -NoPrompt
+        & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $script -Jar $dummyJar -JavaPath $fakeJava -HostName 127.0.0.1 -ReportDirectory $temp -Seconds 5 -NoPrompt
         if ($LASTEXITCODE -ne $expected) { throw "$case expected exit $expected, got $LASTEXITCODE" }
     }
+    $reply = New-Sample | ConvertTo-Json -Compress -Depth 6
+    Set-Content $fakeJava ("@echo off`r`necho $reply`r`nexit /b 0`r`n") -Encoding ASCII
+    $resolved = Resolve-LocalHealthHost $fakeJava $dummyJar 5556 @('192.168.50.20')
+    if ($resolved -ne '192.168.50.20') { throw 'LAN health host resolution failed' }
 } finally { Remove-Item -LiteralPath $temp -Recurse -Force }
 Write-Host 'Smoke launcher health validation and PASS/FAIL/INCONCLUSIVE reports passed.'
 # The final negative fixture deliberately exits 1; clear it before the CI shell checks LASTEXITCODE.

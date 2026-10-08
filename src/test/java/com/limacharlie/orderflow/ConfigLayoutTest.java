@@ -72,4 +72,20 @@ class ConfigLayoutTest {
                     assertTrue(apply.getBounds().y + apply.getHeight() <= panel.getHeight());
                 });
     }
+
+    @Test
+    void onePanelOffersConfigurationFirstAndScrollableStatus() throws Exception {
+        SwingUtilities.invokeAndWait(
+                () -> {
+                    var tabs =
+                            BookmapOrderflowExporter.buildExporterTabs(
+                                    new BookmapOrderflowExporter.Settings(), null, null);
+                    assertEquals(2, tabs.getTabCount());
+                    assertEquals("Configuration", tabs.getTitleAt(0));
+                    assertEquals("Status", tabs.getTitleAt(1));
+                    assertEquals(0, tabs.getSelectedIndex());
+                    assertNotNull(find((Container) tabs.getComponentAt(0), JScrollPane.class));
+                    assertTrue(tabs.getComponentAt(1) instanceof JScrollPane);
+                });
+    }
 }

@@ -157,7 +157,7 @@ class ExporterTest {
                         2,
                         new TradeInfo(false, true, true, true, "aggr-" + i, "order-" + i));
             for (int i = 0; i < 40; i++) exporter.cancel("order-" + i);
-            exporter.stop();
+            var stopping = java.util.concurrent.CompletableFuture.runAsync(exporter::stop);
             var wire = new java.util.ArrayList<String>();
             var seqPattern = java.util.regex.Pattern.compile("\\\"seq\\\":(\\d+)");
             while (wire.size() < 193) {
@@ -171,6 +171,7 @@ class ExporterTest {
                 assertTrue(matcher.find());
                 dealer.send("ACK synthetic-receiver " + matcher.group(1));
             }
+            stopping.get(5, java.util.concurrent.TimeUnit.SECONDS);
             Path event =
                     Files.list(dir)
                             .filter(p -> p.toString().endsWith(".gz"))

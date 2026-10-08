@@ -3,7 +3,8 @@ ORDERFLOW v0.5 - UPDATED CONFIGURATION + LIVE BRIDGE SMOKE TEST
 1. Extract this ZIP into a normal folder. Keep all files together.
 2. Close Bookmap and replace its previous exporter JAR with the JAR here.
    Keep one exporter addon installed. Restart Bookmap.
-3. Configuration now scrolls vertically. Bind address, market port 5555,
+3. One Orderflow exporter panel now has Configuration and Status tabs.
+   Configuration opens first and scrolls vertically. Bind address, market port 5555,
    health port 5556 and bridge queue each have their own labeled row.
    Apply / restart stays at the bottom outside the scrolling area.
 4. On Ubuntu start the existing private receiver, using your Windows LAN IP:
@@ -19,7 +20,8 @@ path to java.exe (an appropriate Bookmap runtime or installed Java).
 No Windows Python installation or administrator access is needed.
 The script never changes your firewall or registers another market receiver.
 
-Defaults: reads localhost health port 5556 for 60 seconds.
+The BAT prints Windows LAN IP(s) and finds the health listener on LAN/localhost.
+Defaults: discovers a local health listener on port 5556; checks for 60 seconds.
 If you bind Bookmap to a specific LAN interface instead of 0.0.0.0:
   Smoke-Test.bat -HostName YOUR_WINDOWS_LAN_IP
 For a custom health port:

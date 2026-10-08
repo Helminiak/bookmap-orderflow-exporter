@@ -35,4 +35,20 @@ class BridgeHealthQueryTest {
     void missingHealthServerTimesOut() throws Exception {
         assertNull(BridgeHealthQuery.query("127.0.0.1", ExporterTest.freePort(), 50));
     }
+
+    @Test
+    void reloadReleasesTheSamePortsBeforeRebind() throws Exception {
+        int market = ExporterTest.freePort(), health = ExporterTest.freePort();
+        var first = new LiveBridge("127.0.0.1", market, health, 100, "SYNTH", .25, () -> "{}");
+        assertNotNull(BridgeHealthQuery.query("127.0.0.1", health, 1000));
+        first.close();
+        var second = new LiveBridge("127.0.0.1", market, health, 100, "SYNTH", .25, () -> "{}");
+        try {
+            String reply = BridgeHealthQuery.query("127.0.0.1", health, 1000);
+            assertNotNull(reply);
+            assertTrue(reply.contains("\"invalid\":false"));
+        } finally {
+            second.close();
+        }
+    }
 }

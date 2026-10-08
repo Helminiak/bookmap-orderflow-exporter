@@ -27,7 +27,8 @@ public final class LiveBridge implements AutoCloseable {
     private final AtomicLong overflows = new AtomicLong();
     private volatile boolean running = true, invalid;
     private volatile String reason = "", state = "STARTING", receiver = "none";
-    private volatile long discarded, dropped,
+    private volatile long discarded,
+            dropped,
             published,
             bytes,
             lastSeq,
@@ -46,7 +47,9 @@ public final class LiveBridge implements AutoCloseable {
             String alias,
             double pips,
             Supplier<String> journalHealth) {
-        if (!Double.isFinite(pips) || pips <= 0 || capacity < 1
+        if (!Double.isFinite(pips)
+                || pips <= 0
+                || capacity < 1
                 || port < 1
                 || port > 65535
                 || healthPort < 1
@@ -317,21 +320,24 @@ public final class LiveBridge implements AutoCloseable {
         return true;
     }
 
-    /** Bounded shutdown, separate from market callbacks; no network wait on caller. */
+    /**
+     * Lifecycle-only shutdown. Finish ACK grace and release sockets before a settings reload binds
+     * again.
+     */
     @Override
     public void close() {
-        Thread closer =
-                new Thread(
-                        () -> {
-                            long deadline = System.nanoTime() + 5_000_000_000L;
-                            while (!invalid && depth.get() > 0 && System.nanoTime() < deadline)
-                                java.util.concurrent.locks.LockSupport.parkNanos(1_000_000L);
-                            if (depth.get() > 0) invalidate("shutdown with unacknowledged events");
-                            running = false;
-                            worker.interrupt();
-                        },
-                        "orderflow-bridge-shutdown");
-        closer.setDaemon(true);
-        closer.start();
+        long deadline = System.nanoTime() + 1_000_000_000L;
+        while (!invalid && depth.get() > 0 && System.nanoTime() < deadline)
+            java.util.concurrent.locks.LockSupport.parkNanos(1_000_000L);
+        if (depth.get() > 0) invalidate("shutdown with unacknowledged events");
+        running = false;
+        worker.interrupt();
+        if (Thread.currentThread() != worker) {
+            try {
+                worker.join(1500);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }
     }
 }

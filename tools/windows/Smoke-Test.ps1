@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
     [string]$Jar = (Join-Path $PSScriptRoot 'bookmap-orderflow-exporter-v0.5.jar'),
-    [string]$HostName = '127.0.0.1',
+    [string]$HostName = '',
     [ValidateRange(1,65535)][int]$HealthPort = 5556,
     [ValidateRange(5,3600)][int]$Seconds = 60,
     [string]$JavaPath,
@@ -34,7 +34,39 @@ function Measure-BridgeSample {
     return ($Sample.state -eq 'CONNECTED' -and $Sample.receiver -and $Sample.receiver -ne 'none')
 }
 
+function Get-LocalLanAddresses {
+    $addresses = @()
+    foreach ($nic in [System.Net.NetworkInformation.NetworkInterface]::GetAllNetworkInterfaces()) {
+        if ($nic.OperationalStatus -ne 'Up' -or $nic.NetworkInterfaceType -eq 'Loopback') { continue }
+        $props = $nic.GetIPProperties()
+        foreach ($address in $props.UnicastAddresses) {
+            if ($address.Address.AddressFamily -ne 'InterNetwork') { continue }
+            $ip = $address.Address.ToString()
+            if ($ip -notmatch '^(10\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[01])\.)') { continue }
+            $addresses += $ip
+        }
+    }
+    return @($addresses | Select-Object -Unique)
+}
+
+function Resolve-LocalHealthHost {
+    param([string]$Runtime, [string]$AddonJar, [int]$Port, [string[]]$Addresses)
+    # Reading health never registers a second market receiver.
+    foreach ($candidate in @($Addresses) + @('127.0.0.1') | Select-Object -Unique) {
+        $reply = & $Runtime -cp $AddonJar com.limacharlie.orderflow.BridgeHealthQuery $candidate $Port 1
+        foreach ($line in $reply) {
+            try {
+                $health = $line | ConvertFrom-Json
+                if ($health.protocol -eq 'orderflow-live-v0.1') { return $candidate }
+            } catch { }
+        }
+    }
+    return $null
+}
+
 function Invoke-BridgeSmokeTest {
+    $localAddresses = @(Get-LocalLanAddresses)
+    Write-Host ("Windows LAN IP(s): " + ($localAddresses -join ', ')) -ForegroundColor Cyan
     if (-not (Test-Path -LiteralPath $Jar -PathType Leaf)) { throw "Put the updated exporter JAR beside Smoke-Test.bat. Missing: $Jar" }
     if (-not $JavaPath) {
         if ($env:JAVA_HOME -and (Test-Path -LiteralPath (Join-Path $env:JAVA_HOME 'bin/java.exe'))) {
@@ -47,6 +79,15 @@ function Invoke-BridgeSmokeTest {
     }
     if (-not $JavaPath -or -not (Test-Path -LiteralPath $JavaPath -PathType Leaf)) {
         throw 'Java 17+ was not found. Use -JavaPath "C:\path\to\java.exe".'
+    }
+    if (-not $HostName) {
+        Write-Host 'Looking for the Bookmap health listener on your LAN addresses and localhost...'
+        $HostName = Resolve-LocalHealthHost $JavaPath $Jar $HealthPort $localAddresses
+        if (-not $HostName) {
+            $HostName = if ($localAddresses.Count -gt 0) { $localAddresses[0] } else { '127.0.0.1' }
+            Write-Host "No health listener answered. Use Bookmap bind 0.0.0.0, enable bridge, and Apply/restart." -ForegroundColor Yellow
+            Write-Host "If Bookmap reports cannot bind, another instance may own port $HealthPort. Use one exporter per port pair." -ForegroundColor Yellow
+        }
     }
     Write-Host ''
     Write-Host 'ORDERFLOW - LIVE WINDOWS TO UBUNTU SMOKE TEST' -ForegroundColor Cyan

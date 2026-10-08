@@ -2,6 +2,12 @@
 
 This project keeps the acquisition layer public and versioned so the development path is visible from the original exporter scaffold through later validation-driven changes. Proprietary entry-quality logic belongs in the separate private `orderflow-entry-engine` repository and is intentionally excluded here.
 
+## v0.5 single-panel/LAN discovery follow-up
+
+- Return one Bookmap panel with internal Configuration/Status tabs, configuration first, both scrollable.
+- Release bridge sockets before settings reload; regression-test same-port restart after bounded lifecycle ACK grace.
+- Windows launcher prints private LAN IPs and auto-finds the local health listener; private Linux launcher discovers the local subnet and Windows health endpoint.
+
 ## v0.5 configuration/smoke-test follow-up
 
 - Fixed clipped bridge controls by separating labeled rows, fitting viewport width, and adding vertical scrolling with a fixed Apply button.

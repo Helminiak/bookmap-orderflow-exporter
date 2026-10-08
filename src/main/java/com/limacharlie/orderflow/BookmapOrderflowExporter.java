@@ -531,11 +531,18 @@ public class BookmapOrderflowExporter
 
     private static StrategyPanel[] buildPanels(
             Settings settings, Api api, BookmapOrderflowExporter instance) {
-        StrategyPanel configPanel = new StrategyPanel("Exporter configuration");
-        configPanel.setLayout(new BorderLayout());
-        configPanel.add(buildConfigurationPanel(settings, api), BorderLayout.CENTER);
+        StrategyPanel panel = new StrategyPanel("Orderflow exporter");
+        panel.setLayout(new BorderLayout());
+        panel.add(buildExporterTabs(settings, api, instance), BorderLayout.CENTER);
+        setEnabledRecursively(panel, api != null);
+        return new StrategyPanel[] {panel};
+    }
 
-        StrategyPanel statusPanel = new StrategyPanel("Live exporter status");
+    static javax.swing.JTabbedPane buildExporterTabs(
+            Settings settings, Api api, BookmapOrderflowExporter instance) {
+        JPanel configPanel = buildConfigurationPanel(settings, api);
+
+        JPanel statusPanel = new JPanel();
         statusPanel.setLayout(new BorderLayout(4, 4));
         JLabel status = new JLabel();
         status.setVerticalAlignment(SwingConstants.TOP);
@@ -558,10 +565,15 @@ public class BookmapOrderflowExporter
                     "<html>Enable the exporter for an instrument to see live status.</html>");
         }
 
-        boolean enabled = api != null;
-        setEnabledRecursively(configPanel, enabled);
-        setEnabledRecursively(statusPanel, enabled);
-        return new StrategyPanel[] {configPanel, statusPanel};
+        JScrollPane statusScroll = new JScrollPane(statusPanel);
+        statusScroll.getVerticalScrollBar().setUnitIncrement(20);
+        javax.swing.JTabbedPane tabs = new javax.swing.JTabbedPane();
+        tabs.addTab("Configuration", configPanel);
+        tabs.addTab("Status", statusScroll);
+        tabs.setSelectedIndex(0);
+        tabs.setPreferredSize(new java.awt.Dimension(280, 440));
+        tabs.setMinimumSize(new java.awt.Dimension(0, 0));
+        return tabs;
     }
 
     /**
