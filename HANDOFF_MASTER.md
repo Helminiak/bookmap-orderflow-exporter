@@ -1,5 +1,10 @@
 # Master engineering handoff — 2026-10-08
 
+Latest d511e90 PR Ubuntu test again failed awaiting WELCOME despite bounded health readiness. Therefore startup-readiness alone is not established as the correction/root cause. Next checkpoint enables full assertion diagnostics in Gradle CI rather than suppressing or retrying the failure. Source1405b76 push/PR matrices passed, but latest documentation-head PR CI did not; this candidate remains review-only.
+
+Actual ChatGPT targeted preliminary review arrived on PR15, source1405b76: ON TRACK/UI PARTIALLY APPROVED, not native/release approval. Closed-panel notification limitation accepted for SDK investigation,80% burst lead-time and explanatory-label clipping remain open. The versioned review index is now published. Current API7.6.0.20 contains SoundAlertMessage popup support and official Bookmap examples confirm it; safe simplified-module lifecycle/background dispatch still needs evidence before integration.
+
+
 ## Agent A follow-up review / CI correction
 
 Source cd8fffa had31 local Java/15 validator/six loopback passes and identical repeat artifacts, but Ubuntu push CI timed out before WELCOME in the existing overflow-journal test. Readiness had not been observed; the cause is not conclusively established. The next correction observes bounded health readiness, emits explicit missing-frame assertions and prevents repeated ephemeral test-port selection across the test JVM. Delivery/overflow assertions and production behavior are preserved.
