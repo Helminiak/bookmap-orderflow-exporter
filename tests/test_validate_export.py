@@ -61,6 +61,18 @@ class ValidationTests(unittest.TestCase):
         self.assertEqual(result["zero_size_execution_end_markers"], 1)
         self.assertTrue(result["summary_checked"] and result["pips_checked"])
 
+    def test_clean_v05_journal_with_invalid_bridge(self):
+        result = validator.inspect(*self.write(addon_version="0.5.0", journal_overflows=0,
+                                               journal_dropped=0, bridge={"invalid": True}))
+        self.assertTrue(result["valid"])
+
+    def test_v05_journal_drop_counters_fail_closed(self):
+        for name in ("journal_overflows", "journal_dropped"):
+            changes = dict(addon_version="0.5.0", journal_overflows=0, journal_dropped=0)
+            changes[name] = 1
+            with self.assertRaises(validator.ValidationError):
+                validator.inspect(*self.write(**changes))
+
     def test_capture_only_and_plain_ndjson(self):
         capture, _ = self.write()
         result = validator.inspect(capture)

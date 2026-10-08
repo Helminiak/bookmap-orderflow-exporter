@@ -184,6 +184,66 @@ class ExporterTest {
         }
     }
 
+    @Test
+    void bridgeOverflowLeavesCompleteJournal() throws Exception {
+        var settings = new BookmapOrderflowExporter.Settings();
+        settings.outputDirectory = dir.toString();
+        settings.bridgeEnabled = true;
+        settings.bridgeBind = "127.0.0.1";
+        settings.bridgePort = freePort();
+        settings.bridgeHealthPort = freePort();
+        settings.bridgeQueueCapacity = 1;
+        var exporter = new BookmapOrderflowExporter();
+        exporter.initialize(
+                "SYNTH.CME@TEST",
+                new InstrumentInfo("SYNTH", "CME", "TEST", .25, 1, "Synthetic", true),
+                api(settings),
+                null);
+        exporter.onTimestamp(100);
+        exporter.onRealtimeStart();
+        for (int i = 0; i < 100; i++) exporter.send("x-" + i, true, 20000, 1);
+        exporter.stop();
+        Path summary =
+                Files.list(dir)
+                        .filter(p -> p.toString().endsWith(".json"))
+                        .findFirst()
+                        .orElseThrow();
+        String text = Files.readString(summary);
+        assertTrue(text.contains("\"writer_ok\":true"));
+        assertTrue(text.contains("\"records_persisted\":103"));
+        assertTrue(text.contains("\"invalid\":true"));
+        assertTrue(text.contains("\"overflows\":1"));
+    }
+
+    @Test
+    void liveJournalOverflowReturnsAndFailsArchiveClosed() throws Exception {
+        var exporter = new BookmapOrderflowExporter();
+        var settings = new BookmapOrderflowExporter.Settings();
+        var settingsField = BookmapOrderflowExporter.class.getDeclaredField("settings");
+        settingsField.setAccessible(true);
+        settingsField.set(exporter, settings);
+        var queueField = BookmapOrderflowExporter.class.getDeclaredField("queue");
+        queueField.setAccessible(true);
+        queueField.set(exporter, new EventBuffer(1));
+        var realtimeField = BookmapOrderflowExporter.class.getDeclaredField("realtimePhase");
+        realtimeField.setAccessible(true);
+        realtimeField.setBoolean(exporter, true);
+        exporter.onTimestamp(100);
+        exporter.send("first", true, 1, 1);
+        exporter.send("second", true, 2, 1);
+        exporter.send("third", true, 3, 1);
+        var errorField = BookmapOrderflowExporter.class.getDeclaredField("writerError");
+        errorField.setAccessible(true);
+        assertNotNull(
+                ((java.util.concurrent.atomic.AtomicReference<?>) errorField.get(exporter)).get());
+        var overflowField = BookmapOrderflowExporter.class.getDeclaredField("journalOverflows");
+        overflowField.setAccessible(true);
+        assertEquals(1, overflowField.getLong(exporter));
+        var droppedField = BookmapOrderflowExporter.class.getDeclaredField("journalDropped");
+        droppedField.setAccessible(true);
+        assertEquals(2, droppedField.getLong(exporter));
+    }
+
     static int freePort() throws Exception {
         try (var socket = new java.net.ServerSocket(0)) {
             return socket.getLocalPort();
