@@ -1,3 +1,7 @@
+# OWNER STOPPED — morning resume index
+
+[Minimal restart index](handoff/CURRENT_STATE.md) and [complete20261009 handoff](docs/handoff/AGENT_A_MORNING_RESUME_20261009.md) supersede historical current-task headers below. Explicit owner RESUME required; no overnight development. Exact final checkpoints are in PR19/PR20 STOPPED_CHECKPOINT comments.
+
 ## Latest distinct Agent A task — issue16 LAN candidate (revision6)
 
 Stacked draftPR20/branchagent-a/lan-ipv4-selection-20261009, source5c0e37f2c52c87efd3fad3a80bd53b12d91c8067: actual Configuration Auto/manual/refresh/selector integrated, strict local validation before any Apply write, off-EDT metadata, manual/wildcard migration preserved.70 Java/15 Python local pass; exact-source Windows/Ubuntu CI PASS; Qwen findings assessed/corrected, follow-up independently assessed. [Complete source-bound packet/risks/artifact/test evidence](docs/reviews/AGENT_A_LAN_IPV4_5c0e37f_REVIEW.md). Conservative opt-in fresh/legacy Auto tradeoff needs independent review, not an owner relay request. Candidate JAR local only; approved Windows recovery preview83af7d48 unchanged. PR19 diagnostic source59ca1e8 review remains separate; no intermittent root cause claimed. Next: exact new LAN source review/fixes; native/DPI/serializer/owner Apply acceptance pending. No install/staging/restart/activation/trading/security/merge/release. Older headers below are preserved history.
