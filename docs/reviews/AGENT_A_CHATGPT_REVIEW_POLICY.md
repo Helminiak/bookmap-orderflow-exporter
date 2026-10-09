@@ -1,0 +1,11 @@
+# Agent A: engineering review and approvals (2026-10-09)
+
+Owner direction: ChatGPT handles ordinary engineering review/approval; interrupt owner only when materially necessary. This document authorizes scoped, reversible development in agent-a/native-bridge-recovery-20261009 without repeated GO requests. It does not bypass Codex interactive permission prompts or grant access beyond available tools.
+
+Routine work without repeated owner GO: inspect code and sanitized build logs; ask local Qwen Agent C for bounded deterministic test/code tasks in a SEPARATE PUBLIC exporter worktree; implement UI behavior and tests on Agent A's own branch; run JDK17/Gradle validation; inspect diffs, commit/push reversible checkpoints and prepare draft PRs. Do not touch main or other agents' branches. Use ChatGPT through the conversation/GitHub evidence for independent review; its explicit response is required to claim ChatGPT-approved. If unavailable, annotate REVIEW PENDING CHATGPT and continue separate low-risk tests, do not silently approve high-risk Java transport changes.
+
+Owner-only approval: replacing/installing Windows JAR; restarting/reloading Bookmap or exporter; touching live/simulated brokerage, market feed or captures; changing firewall, security credentials or external access; material paid cloud spending; deleting user data/rewriting shared history; merging/releasing/Marketplace submission. A completed native smoke test is not production acceptance.
+
+Priority: issue #17 accessible archive-only/bridge-disable draft for NEXT explicit Apply, issue #16 auto-detect only local Windows LAN IP with manual persistence, genuine CI WELCOME handshake investigation. Separate uninstalled candidate JAR build/tests are allowed. Do not remove fail-closed INVALID checks, claim ACK is durable, or commit raw/proprietary captures.
+
+Each review checkpoint: exact base/head SHA, changed files, expected behavior, tests with exit codes and skips, CI runs, risk/rollback, Windows native verification versus pending, and requested decision. Routine failed tests -> diagnose and fix without involving owner. For material transport/session protocol or architecture changes, request ChatGPT review before integrating into shared candidate; never fabricate its signoff.
