@@ -1,3 +1,7 @@
+# Current assigned native recovery pass — documentation only
+
+Owner-scoped first pass complete on agent-a/native-bridge-recovery-20261009 fromf790988. [Verified access/mode, installed artifact evidence, issue16/17 proposals, QwenC task queue and unresolved CI](docs/reviews/AGENT_A_NATIVE_RECOVERY_FIRST_PASS.md). SSH and desktop access proven separately; live-data/simulated-trading screen observed read-only. No JAR/settings/restart/input changes.6 focused Java tests pass once; intermittent post-readiness WELCOME CI failure remains OPEN. Source5f840f3 artifact unchanged. STOP after bounded pass; queued QwenC output pending. Older prior-scope checkpoints below remain historical.
+
 # Current owner-review checkpoint — source5f840f3
 
 AGENT A — BOOKMAP v0.5a JAR READY FOR OWNER REVIEW. STOPPED for owner inspection; Agent B paused. [Complete source-bound handoff and artifact evidence](docs/reviews/AGENT_A_NOTICE_LAYOUT_5f840f3_REVIEW.md).36 Java/15 Python and exact-source Windows/Ubuntu push+PR CI pass. Clean tested package, local repeat checksums, packaged class/source correspondence and inspected realized synthetic Swing screenshots pass. Native Bookmap and actual Windows DPI PENDING. Windows helper read-only ping/list/capture succeeded; no JAR installed or activated. Source5f840f3 remains artifact anchor; later documentation SHA is separate. Next action owner inspection/explicit safe-install authorization; no autonomous next milestone.
