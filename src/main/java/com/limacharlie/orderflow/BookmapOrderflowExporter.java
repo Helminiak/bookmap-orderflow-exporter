@@ -155,7 +155,7 @@ public class BookmapOrderflowExporter
     private Path eventFile;
     private Path summaryFile;
     private EventBuffer queue;
-    private LiveBridge bridge;
+    private volatile LiveBridge bridge;
     private volatile String bridgeFailure = "";
     private CallbackMetrics callbackMetrics = new CallbackMetrics();
     private volatile long journalOverflows, journalDropped;
@@ -595,7 +595,15 @@ public class BookmapOrderflowExporter
     private static StrategyPanel[] buildPanels(
             Settings settings, Api api, BookmapOrderflowExporter instance) {
         StrategyPanel panel = new StrategyPanel("Orderflow exporter");
-        panel.setLayout(new BorderLayout(4, 4));
+        panel.setLayout(new BridgeOperatorNotice.HostLayout());
+        panel.add(new BridgeOperatorNotice(() -> {
+            if (instance == null) return BridgeOperatorNotice.disabled();
+            if (!instance.bridgeFailure.isEmpty())
+                return BridgeOperatorNotice.failure(instance.bridgeFailure);
+            LiveBridge current = instance.bridge;
+            return current == null ? BridgeOperatorNotice.disabled()
+                    : BridgeOperatorNotice.describe(current.operatorSnapshot());
+        }), BorderLayout.NORTH);
         panel.add(buildExporterTabs(settings, api, instance), BorderLayout.CENTER);
         // StrategyPanel.setEnabled delegates into Bookmap's own recursive GUI helpers.
         // Enable our contents directly, including tabs, without depending on those internals.
@@ -817,6 +825,8 @@ public class BookmapOrderflowExporter
         JPanel links = new BridgeConfigurationLayout.NetworkRow();
         addInformationLink(links, "Installation / help",
                 "https://github.com/Helminiak/bookmap-orderflow-exporter/blob/feature/linux-live-bridge/docs/LINUX_BRIDGE.md");
+        addInformationLink(links, "Review checklist",
+                "https://github.com/Helminiak/bookmap-orderflow-exporter/blob/feature/agent-a-receiver-warning/docs/NATIVE_REVIEW_CHECKLIST.md");
         addInformationLink(links, "Report an issue",
                 "https://github.com/Helminiak/bookmap-orderflow-exporter/issues");
         content.add(links, BorderLayout.SOUTH);

@@ -1,4 +1,47 @@
+# Current owner-review checkpoint — source5f840f3
+
+AGENT A — BOOKMAP v0.5a JAR READY FOR OWNER REVIEW. STOPPED for owner inspection; Agent B paused. [Complete source-bound handoff and artifact evidence](docs/reviews/AGENT_A_NOTICE_LAYOUT_5f840f3_REVIEW.md).36 Java/15 Python and exact-source Windows/Ubuntu push+PR CI pass. Clean tested package, local repeat checksums, packaged class/source correspondence and inspected realized synthetic Swing screenshots pass. Native Bookmap and actual Windows DPI PENDING. Windows helper read-only ping/list/capture succeeded; no JAR installed or activated. Source5f840f3 remains artifact anchor; later documentation SHA is separate. Next action owner inspection/explicit safe-install authorization; no autonomous next milestone.
+
+# Regression readiness evidence — UI source5aa1ddc
+
+36 Java/15 Python clean local tests and Windows/Ubuntu pushCI passed; source5aa PRUbuntu failed at BridgeHealthQueryTest:89 before first.close/rebind (one-second first startup query returned null). This is not evidence that ports failed to rebind. The test now observes asynchronous worker readiness with the existing bounded helper, retains the single one-second query/validity checks and always closes first fixture on assertion failure. No bridge production changes or test-level reruns/assertion suppression. Exact reason for remote startup delay unproved; old intermittentWELCOME issue remains distinct/open. Final source package SHA and exact-head CI must be regenerated/checked.
+
+# Windows CI font-metrics correction
+
+Initial UI source ba7772d passed35 local Java/15 Python and UbuntuCI, but both Windows jobs exposed a clipped terminal critical-summary glyph at narrow280px / fractional Tahoma font (allocated55px vs actual72px). Correction measures a separate text view at the upcoming assigned width instead of mutating the painted RootView; fractional-font transition test added. Prior ba7772d artifact is superseded and must not be promoted.36 Java tests pass locally; clean final-source package/CI pending below. Qwen review independently identified the summary clipping risk; unsupported fixed-height/high-severity scrollbar and document-length claims rejected. No live install or other subsystem edits.
+
+# Current owner authorization — Agent A only, v0.5a UI review JAR
+
+Owner GO after independently verified joint qualification authorizes only correction/build/tests/preparation of this v0.5a review JAR on feature/agent-a-receiver-warning / PR15. AgentB remains paused; no private branches touched, install/activation/merge/deploy/release unauthorized. Older qualification STOP entries below are historical.
+
+Notice correction measures assigned width before BorderLayout allocation, uses visible outer viewport height, preserves complete page minimum sizing, pins critical selectable status above scrollable wrapped full details, refreshes layout on state changes and checks actual painted heading/body contrast. Parent-height/initial-width/no-scroll fallback defects reproduced in an isolated original-source constrained Swing host; no actual native Bookmap acceptance claimed. New viewport tests inspect painted last-character rectangles, scrollbar endpoint, complete accessibility/selection, state/resize/font transitions and outer-scroll Apply/row reachability.35 Java tests pass locally; final clean packaging, Python and exact-head CI/artifact evidence follow. Native Bookmap/Windows DPI remains PENDING; do not install running-session JAR. Next safe action: complete source-bound artifact/review evidence, then STOP for owner inspection.
+
+# Latest owner gate — independent qualification checkpoint, 2026-10-09 UTC
+
+Independent Responses qualification PASS at production source67129989c63373db2b674f68aa5a3fb3703d41e9; one initial truncated review failed, one bounded retry completed and findings independently checked. No production edits. **STOP pending owner-authorized joint AgentA/B test, then explicit GO.** This gate supersedes older autonomous-work wording below. See [qualification and recovery report](docs/reviews/AGENT_A_QUALIFICATION_6712998_REVIEW.md).31 Java/15 Python pass; source671 Windows/Ubuntu push+PR green, intermittent WELCOME root cause still OPEN. New owner dark-theme contrast/native-install steering preserved for after GO. Dashboard/service/Bookmap untouched. Final documentation commit must be resolved from Git/PR. Private GitHub recovery comment has exact local evidence locations/startup instructions.
+
 # Master engineering handoff — 2026-10-08
+
+Latest d511e90 PR Ubuntu test again failed awaiting WELCOME despite bounded health readiness. Therefore startup-readiness alone is not established as the correction/root cause. Next checkpoint enables full assertion diagnostics in Gradle CI rather than suppressing or retrying the failure. Source1405b76 push/PR matrices passed, but latest documentation-head PR CI did not; this candidate remains review-only.
+
+Actual ChatGPT targeted preliminary review arrived on PR15, source1405b76: ON TRACK/UI PARTIALLY APPROVED, not native/release approval. Closed-panel notification limitation accepted for SDK investigation,80% burst lead-time and explanatory-label clipping remain open. The versioned review index is now published. Current API7.6.0.20 contains SoundAlertMessage popup support and official Bookmap examples confirm it; safe simplified-module lifecycle/background dispatch still needs evidence before integration.
+
+
+## Agent A follow-up review / CI correction
+
+Source cd8fffa had31 local Java/15 validator/six loopback passes and identical repeat artifacts, but Ubuntu push CI timed out before WELCOME in the existing overflow-journal test. Readiness had not been observed; the cause is not conclusively established. The next correction observes bounded health readiness, emits explicit missing-frame assertions and prevents repeated ephemeral test-port selection across the test JVM. Delivery/overflow assertions and production behavior are preserved.
+
+Fresh Codex static review of cd8fffa found no high/critical defect, but P2 recovery text incorrectly combined same-process reconnect with a new receiver startup command. The correction removes that command for recoverable disconnect and adds a negative regression. Bounded source Qwen review returned no answer with5,939 observed tokens; no retry or acceptance claim. ChatGPT review remains pending.
+
+## Agent A receiver-warning candidate
+
+Owner-loaded governance directive is on separate unmerged docs/exporter-agent-checkpoints-20261008; original ingestion reconciliation and private role boundaries were read. This work uses isolated feature/agent-a-receiver-warning based on 01f016b54dfbb15b7fa055e8e99260e9e649a6d3. PR6 source/worktree and other-agent branches are preserved.
+
+New persistent nonmodal notice above all tabs immediately distinguishes disabled, waiting, handshake/awaiting ACK, RAM ACK checkpoint, recoverable disconnect and invalid/error. It provides receiver startup and explicit archive-only next-session instructions. No auto-disable, reset of INVALID, protocol/default change or market-callback work is added. A coalescing 1s Swing timer reads approximate volatile diagnostics only while the panel is displayed; unchanged notices are not rewritten. Retention ≥80% is advisory only, not a guaranteed lead time during bursts. The panel is not a global alarm when closed. The candidate displays FOR REVIEW — NOT PRODUCTION APPROVED and links a native review checklist.
+
+Local preliminary Qwen inference actually used the Ubuntu RTX5090 CUDA worker, observed18,462 MiB allocation during a36.3s request,3,434 tokens. All-layer offload/exclusive utilization are not certified. One incorrect HELLO/ACK proposal was rejected. Sanitized provenance is in docs/validation/2026-10-08-agent-a-qwen-verification.json; no credentials/runtime configuration changed.
+
+Local31 Java tests and15 Python3.12 validator tests pass; Swing font-scale previews at1/1.25/1.5 were rendered and inspected, showing complete new notice and network controls. These are not native Bookmap/DPI checks; an existing explanatory configuration label clips in the enlarged-font preview and remains a follow-up. Actual Bookmap installation/restart is prohibited until a safe owner-authorized window. Artifact hashes/exact-head CI and review packet follow after source commit. Native/REALTIME/soak/disk-stall/durability/ChatGPT/release gates remain open. Dashboard8766 stays separate from Agent B8767 and points at this owned worktree. No public release or merge is authorized.
 
 ## Latest verification checkpoint
 

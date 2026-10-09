@@ -101,8 +101,10 @@ class ExporterTabsTest {
                                             JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
                             outerScroll.setSize(width, 360);
                             // Bookmap supplies the host width; retain natural page height.
-                            host.setSize(width - 24, host.getPreferredSize().height);
-                            BridgeConfigurationLayoutTest.layout(host);
+                            for (int pass = 0; pass < 3; pass++) {
+                                host.setSize(width - 24, host.getPreferredSize().height);
+                                BridgeConfigurationLayoutTest.layout(host);
+                            }
                             host.setPreferredSize(
                                     new Dimension(width - 24, host.getPreferredSize().height));
                             BridgeConfigurationLayoutTest.layout(outerScroll);
@@ -143,7 +145,7 @@ class ExporterTabsTest {
                                                         + network.getSize());
                                     }
                             }
-                            assertTrue(fields.getY() + lastBottom <= apply.getY());
+                            assertTrue(fields.getY() + lastBottom <= apply.getY(), "fields="+fields.getBounds()+" lastBottom="+lastBottom+" apply="+apply.getBounds()+" panel="+panel.getBounds());
                             var buttonBounds =
                                     SwingUtilities.convertRectangle(
                                             apply.getParent(), apply.getBounds(), host);
