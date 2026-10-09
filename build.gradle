@@ -64,3 +64,12 @@ tasks.register('smokeTestBundle', Zip) {
     from(tasks.jar)
     from('tools/windows') { exclude '*Tests.ps1' }
 }
+
+// Synthetic Swing host render; not native Bookmap or Windows-DPI acceptance.
+tasks.register('renderNoticePreview', JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'com.limacharlie.orderflow.BridgeNoticeViewportTest'
+    args layout.buildDirectory.dir('notice-previews').get().asFile.absolutePath
+    systemProperty 'java.awt.headless', 'true'
+}

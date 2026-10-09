@@ -595,7 +595,7 @@ public class BookmapOrderflowExporter
     private static StrategyPanel[] buildPanels(
             Settings settings, Api api, BookmapOrderflowExporter instance) {
         StrategyPanel panel = new StrategyPanel("Orderflow exporter");
-        panel.setLayout(new BorderLayout(4, 4));
+        panel.setLayout(new BridgeOperatorNotice.HostLayout());
         panel.add(new BridgeOperatorNotice(() -> {
             if (instance == null) return BridgeOperatorNotice.disabled();
             if (!instance.bridgeFailure.isEmpty())

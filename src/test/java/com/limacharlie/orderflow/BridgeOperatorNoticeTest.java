@@ -73,7 +73,7 @@ class BridgeOperatorNoticeTest {
                                                         80)));
                         var panel = new BridgeOperatorNotice(source::get);
                         BridgeConfigurationLayoutTest.fonts(panel, scale);
-                        var message = ExporterTabsTest.find(panel, JTextArea.class, null);
+                        var message = panel.criticalText();
                         var document = message.getDocument();
                         var changes = new java.util.concurrent.atomic.AtomicInteger();
                         document.addDocumentListener(
@@ -192,7 +192,7 @@ class BridgeOperatorNoticeTest {
                                 ExporterTabsTest.find(
                                         root, BridgeConfigurationLayout.Fields.class, null);
                         assertTrue(fields.getHeight() >= fields.getPreferredSize().height);
-                        var text = ExporterTabsTest.find(notice, JTextArea.class, null);
+                        var text = notice.criticalText();
                         assertTrue(text.getHeight() >= text.getPreferredSize().height);
                         var image =
                                 new java.awt.image.BufferedImage(
