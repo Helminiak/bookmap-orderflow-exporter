@@ -120,6 +120,7 @@ class LanBindControlsTest {
                     assertFalse(controls.validateForApply());
                     assertNotNull(errors.get());
                     controls.adapterSelector().setSelectedIndex(1);
+                    assertEquals("auto", controls.modeKey(), "programmatic draft selection must retain Auto mode");
                     assertEquals("192.168.10.21", field.getText());
                     assertTrue(controls.validateForApply());
                     field.setText("192.168.10.20");
