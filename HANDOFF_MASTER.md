@@ -1,3 +1,7 @@
+# Recovery draft development checkpoint — source33fcd9d
+
+Updated ChatGPT review policy authorizes routine bounded engineering without repeated ownerGO. [Source-bound review packet](docs/reviews/AGENT_A_RECOVERY_DRAFT_33fcd9d_REVIEW.md); draftPR19. Local Qwen produced the draft-only model/tests in a separate public worktree; Codex verified7 focused/43 full Java +15 Python tests and clean package. Helper is not wired into UI; issue17 recovery control remains unfinished. REVIEW PENDING CHATGPT — no actual signoff. Native/Windows DPI PENDING; installed source5f840f3 unchanged. Existing intermittent WELCOME failure remains OPEN. Next safe work synthetic controls/manual-Apply prototype; owner-only installation/restart/trading/security/merge/release gates retained. Older STOP/queue-only entries below are superseded for routine development.
+
 # Current assigned native recovery pass — documentation only
 
 Owner-scoped first pass complete on agent-a/native-bridge-recovery-20261009 fromf790988. [Verified access/mode, installed artifact evidence, issue16/17 proposals, QwenC task queue and unresolved CI](docs/reviews/AGENT_A_NATIVE_RECOVERY_FIRST_PASS.md). SSH and desktop access proven separately; live-data/simulated-trading screen observed read-only. No JAR/settings/restart/input changes.6 focused Java tests pass once; intermittent post-readiness WELCOME CI failure remains OPEN. Source5f840f3 artifact unchanged. STOP after bounded pass; queued QwenC output pending. Older prior-scope checkpoints below remain historical.
