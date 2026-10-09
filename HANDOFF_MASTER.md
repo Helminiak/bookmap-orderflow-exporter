@@ -1,3 +1,7 @@
+# Latest owner gate — independent qualification checkpoint, 2026-10-09 UTC
+
+Independent Responses qualification PASS at production source67129989c63373db2b674f68aa5a3fb3703d41e9; one initial truncated review failed, one bounded retry completed and findings independently checked. No production edits. **STOP pending owner-authorized joint AgentA/B test, then explicit GO.** This gate supersedes older autonomous-work wording below. See [qualification and recovery report](docs/reviews/AGENT_A_QUALIFICATION_6712998_REVIEW.md).31 Java/15 Python pass; source671 Windows/Ubuntu push+PR green, intermittent WELCOME root cause still OPEN. New owner dark-theme contrast/native-install steering preserved for after GO. Dashboard/service/Bookmap untouched. Final documentation commit must be resolved from Git/PR. Private GitHub recovery comment has exact local evidence locations/startup instructions.
+
 # Master engineering handoff — 2026-10-08
 
 Latest d511e90 PR Ubuntu test again failed awaiting WELCOME despite bounded health readiness. Therefore startup-readiness alone is not established as the correction/root cause. Next checkpoint enables full assertion diagnostics in Gradle CI rather than suppressing or retrying the failure. Source1405b76 push/PR matrices passed, but latest documentation-head PR CI did not; this candidate remains review-only.
