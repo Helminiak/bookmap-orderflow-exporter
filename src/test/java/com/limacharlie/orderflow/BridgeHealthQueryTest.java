@@ -86,12 +86,19 @@ class BridgeHealthQueryTest {
     void reloadReleasesTheSamePortsBeforeRebind() throws Exception {
         int market = ExporterTest.freePort(), health = ExporterTest.freePort();
         var first = new LiveBridge("127.0.0.1", market, health, 100, "SYNTH", .25, () -> "{}");
-        assertNotNull(BridgeHealthQuery.query("127.0.0.1", health, 1000));
-        first.close();
+        try {
+            // The CI failure occurred before close/rebind: constructor starts a worker and
+            // does not synchronously bind. Observe startup, then retain the single-query check.
+            ExporterTest.awaitBridgeReady(health);
+            assertNotNull(BridgeHealthQuery.query("127.0.0.1", health, 1000), first.status());
+        } finally {
+            first.close();
+        }
         var second = new LiveBridge("127.0.0.1", market, health, 100, "SYNTH", .25, () -> "{}");
         try {
+            ExporterTest.awaitBridgeReady(health);
             String reply = BridgeHealthQuery.query("127.0.0.1", health, 1000);
-            assertNotNull(reply);
+            assertNotNull(reply, second.status());
             assertTrue(reply.contains("\"invalid\":false"));
         } finally {
             second.close();

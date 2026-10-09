@@ -1,3 +1,7 @@
+# Regression readiness evidence — UI source5aa1ddc
+
+36 Java/15 Python clean local tests and Windows/Ubuntu pushCI passed; source5aa PRUbuntu failed at BridgeHealthQueryTest:89 before first.close/rebind (one-second first startup query returned null). This is not evidence that ports failed to rebind. The test now observes asynchronous worker readiness with the existing bounded helper, retains the single one-second query/validity checks and always closes first fixture on assertion failure. No bridge production changes or test-level reruns/assertion suppression. Exact reason for remote startup delay unproved; old intermittentWELCOME issue remains distinct/open. Final source package SHA and exact-head CI must be regenerated/checked.
+
 # Windows CI font-metrics correction
 
 Initial UI source ba7772d passed35 local Java/15 Python and UbuntuCI, but both Windows jobs exposed a clipped terminal critical-summary glyph at narrow280px / fractional Tahoma font (allocated55px vs actual72px). Correction measures a separate text view at the upcoming assigned width instead of mutating the painted RootView; fractional-font transition test added. Prior ba7772d artifact is superseded and must not be promoted.36 Java tests pass locally; clean final-source package/CI pending below. Qwen review independently identified the summary clipping risk; unsupported fixed-height/high-severity scrollbar and document-length claims rejected. No live install or other subsystem edits.
