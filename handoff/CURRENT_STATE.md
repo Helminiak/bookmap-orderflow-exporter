@@ -1,0 +1,3 @@
+# Current state pointer
+
+Read [HANDOFF_MASTER.md](../HANDOFF_MASTER.md) and [host/shutdown repair](../docs/BOOKMAP_HOST_REPAIR_2026-10-08.md). Initial tab build fb77a37 was rejected by the owner (blank Configuration/disable stall). Repaired candidate addresses reproduced host sizing and lifecycle STOP backpressure/cleanup. 18 Java / 15 Python tests; six repaired-runtime private generic integrations passed. Native corrected Bookmap acceptance remains pending. PR #6 stays draft/unmerged; main remains validated v0.4, no release/tag. Resolve final repair SHA/CI via PR #6 and git rev-parse HEAD. Nightly notes remain historical, not current approval.

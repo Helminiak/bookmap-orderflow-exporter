@@ -1,0 +1,73 @@
+$ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'Smoke-Test.ps1')
+function New-Sample {
+    return ('{"protocol":"orderflow-live-v0.1","session":"synthetic-session","state":"CONNECTED","invalid":false,"overflows":0,"acknowledged_seq":10,"last_published_seq":12,"receiver":"synthetic-receiver","journal":{"writer_ok":true,"overflows":0,"current_seq":12}}' | ConvertFrom-Json)
+}
+if (-not (Measure-BridgeSample (New-Sample) 9 11)) { throw 'Healthy sample was rejected' }
+foreach ($case in 'invalid','overflow','writer','journal-overflow','ack-regression','published-regression','ack-ahead','missing-field','missing-source-seq') {
+    $sample = New-Sample
+    $previousAck = 9; $previousPublished = 11
+    switch ($case) {
+        'invalid' { $sample.invalid = $true }
+        'overflow' { $sample.overflows = 1 }
+        'writer' { $sample.journal.writer_ok = $false }
+        'journal-overflow' { $sample.journal.overflows = 1 }
+        'ack-regression' { $previousAck = 11 }
+        'published-regression' { $previousPublished = 13 }
+        'ack-ahead' { $sample.acknowledged_seq = 13 }
+        'missing-source-seq' { $sample.journal.PSObject.Properties.Remove('current_seq') }
+        'missing-field' { $sample.PSObject.Properties.Remove('invalid') }
+    }
+    $rejected = $false
+    try { [void](Measure-BridgeSample $sample $previousAck $previousPublished) } catch { $rejected = $true }
+    if (-not $rejected) { throw "Accepted invalid sample: $case" }
+}
+$waiting = New-Sample; $waiting.state = 'WAITING_RECEIVER'
+if (Measure-BridgeSample $waiting 9 11) { throw 'Waiting state counted as connected' }
+
+# End-to-end launcher decision/report coverage using a fake Java health process, no real market receiver.
+$temp = Join-Path ([IO.Path]::GetTempPath()) ('orderflow-launcher-' + [guid]::NewGuid().ToString('N'))
+[void](New-Item -ItemType Directory -Path $temp)
+try {
+    $fakeJava = Join-Path $temp 'java.cmd'
+    $dummyJar = Join-Path $temp 'fixture.jar'
+    Set-Content $dummyJar 'synthetic'
+    $healthy = New-Sample
+    $later = New-Sample; $later.acknowledged_seq = 11; $later.last_published_seq = 13; $later.journal.current_seq = 13
+    $script = Join-Path $PSScriptRoot 'Smoke-Test.ps1'
+    foreach ($case in 'pass','idle','invalid','no-reply','stalled-ack') {
+        $one = $healthy | ConvertTo-Json -Compress -Depth 6
+        $two = $later | ConvertTo-Json -Compress -Depth 6
+        $expected = 0; $delay = ''
+        switch ($case) {
+            'idle' { $two = $one; $expected = 2 }
+            'invalid' { $bad = New-Sample; $bad.invalid = $true; $two = $bad | ConvertTo-Json -Compress -Depth 6; $expected = 1 }
+            'stalled-ack' { $stalled = New-Sample; $stalled.journal.current_seq = 30; $two = $stalled | ConvertTo-Json -Compress -Depth 6; $delay = 'powershell.exe -NoProfile -Command "Start-Sleep -Seconds 6"'; $expected = 1 }
+            'no-reply' { $one = '{"query_error":"synthetic timeout"}'; $two = $one; $expected = 1 }
+        }
+        # Plain synthetic values contain no cmd expansion/metacharacters.
+        Set-Content $fakeJava ("@echo off`r`necho $one`r`n$delay`r`necho $two`r`nexit /b 0`r`n") -Encoding ASCII
+        & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $script -Jar $dummyJar -JavaPath $fakeJava -HostName 127.0.0.1 -ReportDirectory $temp -Seconds 5 -NoPrompt
+        if ($LASTEXITCODE -ne $expected) { throw "$case expected exit $expected, got $LASTEXITCODE" }
+    }
+    # Parameter defaults must resolve from the script file, not the launch directory.
+    $copiedScript = Join-Path $temp 'Smoke-Test.ps1'
+    Copy-Item $script $copiedScript
+    Copy-Item $dummyJar (Join-Path $temp 'bookmap-orderflow-exporter-v0.5a.jar')
+    Get-ChildItem $temp -Filter 'smoke-test-*.json' | Remove-Item
+    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $copiedScript -JavaPath $fakeJava -HostName 127.0.0.1 -Seconds 5 -NoPrompt
+    # Last fixture has stalled ACKs; paths must resolve and produce a report, even on FAIL.
+    if ($LASTEXITCODE -ne 1) { throw 'Default path invocation did not execute smoke validation' }
+    if (-not (Get-ChildItem $temp -Filter 'smoke-test-*.json')) { throw 'Default report path was not resolved' }
+    Set-Content $fakeJava "@echo off`r`necho openjdk version `"25.0.2`" 1>&2`r`nexit /b 0`r`n" -Encoding ASCII
+    if ((Find-JavaRuntime @((Join-Path $temp 'missing-java.exe'), $fakeJava)) -ne $fakeJava) { throw 'Java 25 discovery failed' }
+    Set-Content $fakeJava "@echo off`r`necho java version `"1.8.0`" 1>&2`r`nexit /b 0`r`n" -Encoding ASCII
+    if (Find-JavaRuntime @($fakeJava)) { throw 'Accepted old Java runtime' }
+    $reply = New-Sample | ConvertTo-Json -Compress -Depth 6
+    Set-Content $fakeJava ("@echo off`r`necho $reply`r`nexit /b 0`r`n") -Encoding ASCII
+    $resolved = Resolve-LocalHealthHost $fakeJava $dummyJar 5556 @('192.168.50.20')
+    if ($resolved -ne '192.168.50.20') { throw 'LAN health host resolution failed' }
+} finally { Remove-Item -LiteralPath $temp -Recurse -Force }
+Write-Host 'Smoke launcher health validation and PASS/FAIL/INCONCLUSIVE reports passed.'
+# The final negative fixture deliberately exits 1; clear it before the CI shell checks LASTEXITCODE.
+exit 0

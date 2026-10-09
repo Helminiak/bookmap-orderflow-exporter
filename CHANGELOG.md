@@ -1,6 +1,59 @@
 # Changelog
 
+## v0.5a UI preview — 2026-10-08
+
+- Scroll the entire Configuration page with Bookmap's outer scrollbar, including Apply at the bottom; remove the nested settings viewport.
+- Add original Information/help tab and visible v0.5a title, filenames and manifest revision. Runtime metadata/protocol/defaults remain unchanged.
+- Keep repaired clean disable behavior; document its possible archive/ACK finalization pause. Native new-preview acceptance remains pending.
+
 This project keeps the acquisition layer public and versioned so the development path is visible from the original exporter scaffold through later validation-driven changes. Proprietary entry-quality logic belongs in the separate private `orderflow-entry-engine` repository and is intentionally excluded here.
+
+## Bookmap host / shutdown repair — 2026-10-08 (candidate)
+
+- Owner rejected fb77a37: blank Configuration and disable stall. Reproduce horizontal-only Bookmap host collapsing zero-minimum tab content; use font-based viewport/minimum sizes and preserve scrolling.
+- Keep disabled-addon tab/scroll navigation while settings/Apply remain disabled; enable plugin contents without internal StrategyPanel recursive GUI helper dependency.
+- Lifecycle STOP uses non-waiting bridge offer; ordinary HISTORY unchanged. Bridge cleanup runs in finally even on summary failure; errors/invalidity remain observable.
+- CI immediate health-port reuse exposed worker interruption during JeroMQ context termination; close now uses unpark and a five-cycle immediate rebind regression.
+- Add host and shutdown regressions. Corrected native Bookmap acceptance still pending; see docs/BOOKMAP_HOST_REPAIR_2026-10-08.md.
+
+## UI tab follow-up — 2026-10-08 (candidate, native acceptance pending)
+
+- After nightly notes, owner requested tabs because configuration was hidden. Return one Bookmap panel with Configuration first and Live status second.
+- Retain measured network-row layout/settings listener; independently scroll configuration/status with action buttons outside scrolling. No exporter/default/transport change.
+- Add short-height/font-scale and Apply/save/reload regression coverage. See docs/UI_TAB_FOLLOWUP_2026-10-08.md; native Bookmap visual verification remains pending.
+
+## Engineering checkpoint — 2026-10-08 (0.5.0 candidate, not release)
+
+- Localized network-row clipping corrected at d447a69: original two panels, measured wrapped row height, other-row baseline/spacing preserved and as-needed vertical settings scroll. No exporter/default/status changes.
+- Restored original layout at 3a3a794 after tab/enlargement experiments; those historical entries below are superseded for current installation.
+- Retained same-owner replay/identity handover, immediate reload socket release, historical ACK pacing and narrowly scoped empty-receiver recovery; LIVE offer remains non-waiting.
+- Fixed Windows path binding and negative-test exit status; BAT automatically finds supported Java and LAN health.
+- Independently reviewed a 60s/4,656-event physical smoke PASS; separate 57,771-event PASS remains owner-reported. Actual Bookmap DPI/heavy-load/slowdown acceptance still pending.
+- Added reproducible synthetic journal benchmark, full architecture/version/reliability/roadmap/risk documentation, AGENTS and HANDOFF_MASTER. No new release number, tag, merge or private feature implementation.
+- See docs/SESSION_CLOSEOUT_2026-10-08.md for exact evidence, remaining risks and synchronization report.
+
+## Historical v0.5 single-panel/LAN discovery follow-up (UI superseded)
+
+- Return one Bookmap panel with internal Configuration/Status tabs, configuration first, both scrollable.
+- Release bridge sockets before settings reload; regression-test same-port restart after bounded lifecycle ACK grace.
+- Windows launcher prints private LAN IPs and auto-finds the local health listener; private Linux launcher discovers the local subnet and Windows health endpoint.
+
+## Historical v0.5 configuration/smoke-test follow-up (UI superseded)
+
+- Fixed clipped bridge controls by separating labeled rows, fitting viewport width, and adding vertical scrolling with a fixed Apply button.
+- Added a double-click Windows batch launcher and read-only Java health probe in the existing JAR, with PASS/FAIL/INCONCLUSIVE reports.
+- CI tests narrow-layout reachability, real health queries and Windows launcher decisions; packages JAR/scripts/README as a smoke-test ZIP.
+
+## [0.5.0] - 2026-10-08 (local bridge candidate)
+
+- Integrated an optional JeroMQ ROUTER/DEALER bridge into the existing addon; disabled by default.
+- Canonical callback copies fan out independently to journal/publisher workers; JSON and UI formatting run off market callbacks.
+- Bounded non-waiting LIVE journal/bridge queues. Overflow invalidates the affected output; historical extraction retains strict journal backpressure.
+- Added cumulative ACKs, retained unacknowledged events, same-receiver reconnect, explicit restart/overflow invalidation and a health channel.
+- Added bridge settings/status, lightweight callback latency histograms, rates and queue counters.
+- Bundled JeroMQ plus its Java dependency and license notices in the single v0.5 JAR.
+- Added synthetic callback/journal/wire regression tests and loopback/stress fixtures. No proprietary model code or raw market data.
+- This supersedes the feature hold following the owner's explicit bridge request. Physical Bookmap/LAN responsiveness is not yet validated.
 
 ## v0.4 runtime validation follow-up - 2026-10-08
 

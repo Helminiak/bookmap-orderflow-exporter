@@ -1,224 +1,53 @@
 # Bookmap Orderflow Exporter
 
-Purpose: use Bookmap as the decoding layer for historical `.bmf` replay and live market data while emitting a normalized raw event stream for downstream Orderflow research.
+Public acquisition and canonical MBO/trade normalization for Bookmap BMF replay and provider LIVE data. It is not a trading model or execution system. Private entry-quality research and licensed raw market history stay outside this repository.
 
-## Project status
+## Current state
 
-- **v0.1 runtime validated:** first real Bookmap replay/live capture completed with 519,012 ordered records and a clean writer summary.
-- **v0.2 build verified:** Windows and Ubuntu CI compile/package successfully against Bookmap API `7.6.0.20`.
-- **v0.2 runtime validated:** native settings/status UI and periodic disk flushing were verified in Bookmap with the writer queue at 0% during the observed run.
-- **v0.3 validated at build/runtime level:** established the configurable buffering/status framework.
-- **v0.4 runtime approved:** the complete 786,347-record capture passes independent stream/summary validation; see [approval and scope](docs/validation/2026-10-08-v0.4-runtime-validation.md). It uses a 4 MiB capacity-driven compressed-output buffer plus a 60-second maximum checkpoint interval, closer to Bookmap's publicly documented buffered-recorder behavior.
-- Development history is intentionally preserved. See [CHANGELOG.md](CHANGELOG.md) and [the first runtime validation record](docs/validation/2026-10-08-v0.1-first-runtime-capture.md).
+- Known validated main baseline: **v0.4.0**, main `2e0c0c79df9801a68ff9c3f3332a2ffff558ee2d`; 786,347-record capture validation is documented, not a universal completeness certificate.
+- Development: **v0.5a UI preview / 0.5.0 candidate**, `feature/linux-live-bridge`, [draft PR #6](https://github.com/Helminiak/bookmap-orderflow-exporter/pull/6). Optional single-JAR ACKed bridge, responsive LIVE journal, measured network-row height and a single panel with Configuration/Live status tabs are implemented. No merge, release or tag is implied.
+- Windows/Ubuntu source, packaging, validator and launcher CI pass on the localized UI source anchor d447a69. Current-head closeout CI/state is reported in PR #6 and [master handoff](HANDOFF_MASTER.md).
+- A supplied physical 60-second smoke report inspected earlier passed for 4,656 new events; separate 57,771-event PASS is owner-reported. Actual Bookmap UI at Windows display DPI, sustained load, phase-separated slowdown and exceptional failure acceptance remain open.
 
+See [whole-page v0.5a follow-up](docs/UI_V05A_2026-10-08.md) for the latest UI preview. The owner confirmed the preceding repair can be disabled, with a brief pause; this does not certify the new UI. The owner rejected the initial tab build fb77a37 in Bookmap. See [blank-configuration/shutdown repair](docs/BOOKMAP_HOST_REPAIR_2026-10-08.md) for the corrected candidate and acceptance limits; [earlier tab follow-up](docs/UI_TAB_FOLLOWUP_2026-10-08.md) is historical.
 
-## Next release
+Start with [HANDOFF_MASTER.md](HANDOFF_MASTER.md), [AGENTS.md](AGENTS.md), [risk register](docs/KNOWN_ISSUES_AND_RISKS.md) and [session closeout](docs/SESSION_CLOSEOUT_2026-10-08.md).
 
-**v0.5 is on hold pending the project owner's feature updates.** The v0.4 evaluation does not add bridge/network features or change the Java recorder.
+## Build, install and validate
 
-## Repository boundary
+JDK 17, Gradle 8.10 (installed separately; no wrapper), Python 3.12. Maven network access needed initially. API core/simplified pinned to Bookmap 7.6.0.20. Runtime Java 17+; JeroMQ 0.6.0 is bundled with license notices, Bookmap API classes are compile-only.
 
-This repository is the **data-acquisition and normalization layer**.
-
-It answers:
-
-> What market events did Bookmap receive and in what sequence?
-
-It is deliberately **not** the proprietary entry-quality model, feature engine, trade-management engine, or execution strategy.
-
-The downstream private repository is intended to consume the normalized output of this project for feature engineering, auction-state analysis, MBO microstructure analysis, replay research, and entry-quality scoring.
-
-## v0.4 Bookmap UI and buffering
-
-v0.4 keeps the Bookmap-native configuration/status interface but changes disk behavior from an explicit payload threshold to a capacity-driven recorder. After enabling **Orderflow Raw Exporter v0.4** for an instrument, open its settings/configuration panel.
-
-Configurable items:
-
-- output directory
-- run tag
-- writer queue capacity
-- maximum checkpoint interval (5,000-300,000 ms; default 60,000 ms)
-- fixed 4 MiB compressed-output disk buffer (automatically drains when full)
-- export MBO records on/off
-- export trade records on/off
-
-Changing configuration and pressing **Apply settings / restart exporter** stores the settings in Bookmap, reloads the addon for that instrument, and starts a new output file.
-
-The live status panel shows:
-
-- current instrument
-- HISTORY vs REALTIME phase
-- Bookmap market/replay timestamp
-- active output file
-- writer queue utilization
-- records persisted to the writer
-- current on-disk file size
-- approximate payload accumulated since the previous checkpoint
-- application bytes/write calls handed to the operating system below the 4 MiB buffer
-- last checkpoint age and checkpoint count
-- MBO add/replace/cancel counts
-- trade count
-- number of tracked MBO orders
-- records written/enqueued
-- integrity/anomaly counters
-- last MBO event
-- last trade
-- writer errors, if any
-
-The panel also includes **Open export folder** and **Refresh** controls.
-
-## Scope
-
-Appropriate contents include:
-
-- Bookmap add-on/plugin source
-- MBO listeners and normalization code
-- trade-event listeners
-- timestamp normalization
-- order-book reconstruction support
-- raw-event schemas
-- deterministic replay tests
-- export validators
-- test fixtures small enough for source control
-- build tooling and dependency definitions
-- public documentation of the export format
-
-## Current implementation
-
-Listeners used:
-
-- `MarketByOrderDepthDataListener`
-- `TradeDataListener`
-- `TimeListener`
-- `HistoricalModeListener`
-
-Bookmap's Simplified API preserves callback order. `TimeListener` supplies the market/replay nanosecond clock associated with subsequent events. MBO callbacks provide per-order send/replace/cancel events where the data provider or replay contains MBO.
-
-## Build
-
-Requirements:
-
-- JDK 17
-- Gradle
-- Internet access to Bookmap's Maven repository on the build PC
-
-From this directory:
-
-```powershell
-gradle clean jar
+```sh
+gradle --no-daemon clean test jar writeFixtureClasspath smokeTestBundle
+python -m unittest discover -s tests -v
+python tools/validate_export.py CAPTURE.ndjson.gz --summary CAPTURE.summary.json
 ```
 
-Output:
+Outputs: `build/libs/bookmap-orderflow-exporter-v0.5a.jar`, `build/distributions/orderflow-v0.5a-windows-smoke-test.zip`. Close Bookmap before replacing the JAR; install only one exporter addon. Enable **Orderflow Raw Exporter v0.5a** for an instrument. One **Orderflow exporter** panel contains **Configuration** (opens first), **Live status** and **Information**. Bookmap's outer scrollbar scrolls the entire Configuration page, including Apply at the bottom; there is no smaller nested settings viewport. Network controls keep measured wrapping. Status diagnostics retain their own scrolling. Information provides the preview label and original help/support content. Apply saves settings/reloads and begins a new file/session. A short disable pause can occur during archive finalization and bridge cleanup. UI revision 0.5a does not change the canonical schema, transport or software metadata version 0.5.0.
 
-```text
-build\libs\bookmap-orderflow-exporter-v0.4.jar
-```
+The ZIP contains JAR, BAT, PS1 and README. Keep them together and run BAT on Windows, not PS1 double-click. It discovers Java/LAN health and reports PASS/FAIL/INCONCLUSIVE without registering a second market receiver. The private receiver must be started before opening/enabling a fresh Bookmap bridge session. Full setup/recovery is in [LINUX_BRIDGE.md](docs/LINUX_BRIDGE.md) and [testing/troubleshooting](docs/TESTING_AND_TROUBLESHOOTING.md).
 
-The project currently pins Bookmap API `7.6.0.20`, matching the official DemoStrategies build configuration used when the initial scaffold was created. If the installed Bookmap release requires another compatible API artifact, change `bookmapApiVersion` in `gradle.properties`.
+## Actual defaults
 
-## Load into Bookmap
+| Setting | Default / constraint |
+|---|---|
+| MBO and trades | Both true |
+| Output / run tag | Blank; output resolves ORDERFLOW_EXPORT_DIR then user-home BookmapOrderflowExports; tag may use ORDERFLOW_RUN_TAG |
+| Writer queue | 1,000,000 events; configurable 10,000–5,000,000 |
+| Maximum checkpoint | 60,000ms; configurable 5,000–300,000ms |
+| Compressed-output buffer | Fixed 4 MiB; writer/GZIP have additional arrays |
+| Responsive LIVE journal | true; overload marks archive INVALID rather than waiting |
+| Bridge | Disabled; bind 0.0.0.0, data 5555, health 5556, unacknowledged capacity 100,000 |
 
-1. Build or download the JAR.
-2. In Bookmap, open API plugin/add-on configuration.
-3. Add `bookmap-orderflow-exporter-v0.4.jar`.
-4. Open one ES instrument or a `.bmf` replay.
-5. Enable **Orderflow Raw Exporter v0.4** for that instrument.
-6. Open the addon's settings panel to view/configure the exporter.
-7. For initial validation, replay only a few minutes monotonically.
-8. Disable the addon or close the instrument to flush output and create the summary file.
+HISTORY extraction intentionally applies writer backpressure; enabled historical bridge can wait up to ten seconds on stalled ACK capacity/drain. Responsive LIVE offers do not wait for optional transport. Strict LIVE journal mode permits callback waiting. Flush is not fsync; counters describe buffered/application/OS stages, not durable storage. INVALID streams must not feed inference or be certified complete. Distinct instruments need unique enabled port pairs, and transport is trusted-LAN-only without auth/TLS.
 
-## Output directory
+Output is `<alias>_<UTC extraction timestamp>.ndjson.gz` plus clean-stop summary. Read the entire archive for CRC/ISIZE, strict seq/schema/lifecycle/time/MBO validation and matching summary. Timestamp units are nanoseconds but precision comes from Bookmap/provider; repeated timestamps are valid and seq orders events. Provider completeness and initial-book semantics need separate evidence.
 
-The output directory is now configurable inside Bookmap.
+## Engineering map
 
-If the Bookmap setting is blank, the addon falls back to:
+- [Architecture](docs/ARCHITECTURE.md), [pipeline/lineage](docs/DATA_PIPELINE.md), [schema](docs/EVENT_SCHEMA.md), [original field reference](SCHEMA.md)
+- [Persistence/recovery](docs/PERSISTENCE_AND_RECOVERY.md), [failure modes](docs/RELIABILITY_AND_FAILURE_MODES.md), [performance/reproduction](docs/PERFORMANCE.md)
+- [Version history](docs/VERSION_HISTORY.md), [CHANGELOG](CHANGELOG.md), [decisions](docs/ENGINEERING_DECISIONS.md)
+- [Historical research roadmap](docs/HISTORICAL_REPLAY_AND_RESEARCH.md), [vision](docs/PROJECT_VISION.md), [roadmap](docs/ROADMAP.md), [public/private boundary](docs/PUBLIC_PRIVATE_BOUNDARIES.md)
 
-1. `ORDERFLOW_EXPORT_DIR`, if present.
-2. Otherwise `%USERPROFILE%\BookmapOrderflowExports`.
-
-The run tag is also configurable in Bookmap. If blank, `ORDERFLOW_RUN_TAG` is used when present.
-
-The historical extraction path uses strict backpressure: when the writer queue fills, the Bookmap callback blocks rather than silently dropping market events. This is intentional for historical extraction correctness. A production low-latency live-stream path may use a different transport design.
-
-v0.4 uses a capacity-driven buffered-recorder policy. A 4 MiB `BufferedOutputStream` sits below GZIP. During high data volume it writes to the operating system automatically when that compressed-output buffer fills; during quiet periods a configurable maximum checkpoint interval flushes residual buffered data. The default checkpoint interval is 60 seconds. No checkpoint calls `fsync`, so Windows and the SSD controller can still coalesce physical writes.
-
-Bookmap's public Recorder API demo states that its recorder keeps internal buffers and requires `recorder.fini()` to write those buffers when recording ends. Bookmap does not publicly document an exact internal write-buffer size or periodic flush interval. This project therefore copies that buffered-recorder architecture—not an undocumented Bookmap constant—and makes our own application-level write behavior observable in the status panel.
-
-## Output files
-
-Each run creates files similar to:
-
-```text
-<alias>_<UTC timestamp>.ndjson.gz
-<alias>_<UTC timestamp>.summary.json
-```
-
-The summary contains event totals, active export configuration, and reconstruction anomalies.
-
-## Validate after a replay
-
-```bash
-python tools/validate_export.py path/to/export.ndjson.gz --summary path/to/export.summary.json
-```
-
-The validator fails with exit code 2 on stream/schema/lifecycle/MBO inconsistencies, gzip integrity failures, or summary mismatches. With a summary it also validates pips and v0.4 finalized byte accounting. Capture-only validation remains available, with summary/pips checks explicitly marked as not performed.
-
-For a clean validation test require:
-
-- `parse_errors = 0`
-- `seq_gaps = 0`
-- `time_reversals_observed = 0`
-- `duplicate_adds_reconstructed = 0`
-- `unknown_replaces_reconstructed = 0` / `unknown_cancels_reconstructed = 0`
-- `valid = true` and `summary_checked = true` when a summary is supplied
-
-Unknown replace/cancel events are not automatically proof of corrupt BMF data; they can also indicate initial-state semantics around attachment. Bookmap replay behavior must be observed before those cases are normalized away.
-
-## Validation history
-
-The first completed runtime capture is documented in [`docs/validation/2026-10-08-v0.1-first-runtime-capture.md`](docs/validation/2026-10-08-v0.1-first-runtime-capture.md). It demonstrated coherent historical MBO reconstruction and continuity into live Rithmic callbacks.
-
-For subsequent validation runs, record:
-
-Record:
-
-1. BMF filename and original trading date.
-2. Contract alias displayed by Bookmap.
-3. Export summary counts.
-4. Validator output.
-5. Whether trade events contain aggressor and passive order IDs.
-6. Whether MBO order IDs remain internally consistent over the session.
-7. Whether replaying the same BMF twice produces identical market-event payloads, ignoring output filenames and module-control records.
-
-Do not begin feature engineering until the raw-data equivalence layer is verified.
-
-## Data policy
-
-Do **not** commit bulk market-history data to normal Git.
-
-Exclude:
-
-- Bookmap `.bmf` archives
-- large NDJSON/CSV/Parquet exports
-- model training corpora
-- generated feature stores
-- model weights
-- credentials or market-data-provider secrets
-
-Commit schemas, small synthetic fixtures, manifests, hashes, extraction code, validation code, and metadata needed to reproduce datasets instead.
-
-## Relationship to the private entry engine
-
-Conceptually:
-
-```text
-Bookmap / Rithmic / historical BMF
-              ↓
-bookmap-orderflow-exporter
-              ↓
-normalized deterministic raw events
-              ↓
-private orderflow entry engine
-```
-
-Keeping this boundary clean allows the exporter to remain independently testable and suitable for public source control while proprietary trading logic remains private.
+No bulk BMF/NDJSON/Parquet corpora, private features, thresholds, model weights or credentials belong in public Git. Tiny explicitly synthetic fixtures, generic source and sanitized aggregate evidence are appropriate. See AGENTS.md before future edits.

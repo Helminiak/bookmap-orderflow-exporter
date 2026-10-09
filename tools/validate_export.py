@@ -175,7 +175,7 @@ def inspect(path, summary_path=None):
         for name, value in expected_summary.items():
             integer(summary.get(name), f"summary {name}")
             require(summary[name] == value, f"summary mismatch: {name}")
-        if summary.get("addon_version") == "0.4.0":
+        if summary.get("addon_version") in ("0.4.0", "0.5.0"):
             require(path.suffix == ".gz", "v0.4 summary requires gzip capture")
             require(summary.get("flush_policy") == "buffer_full_or_checkpoint", "unexpected v0.4 flush policy")
             require(summary.get("io_buffer_bytes") == 4194304, "unexpected v0.4 buffer size")
@@ -185,6 +185,10 @@ def inspect(path, summary_path=None):
                 integer(summary.get(name), name, 1)
             require(summary["application_disk_bytes"] == path.stat().st_size, "application byte count differs from finalized file")
             require(summary.get("last_flush_reason") == "shutdown", "missing clean shutdown flush")
+        if summary.get("addon_version") == "0.5.0":
+            for name in ("journal_overflows", "journal_dropped"):
+                integer(summary.get(name), name)
+                require(summary[name] == 0, f"invalid journal: {name}")
     return {"valid": True, "valid_basic_stream": True, "canonical_schema": SCHEMA,
             "capture_sha256": source_hash, "capture_bytes": path.stat().st_size,
             "summary_sha256": summary_hash, "summary_checked": summary is not None,

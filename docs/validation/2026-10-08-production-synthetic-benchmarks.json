@@ -1,0 +1,165 @@
+{
+  "source_sha": "d7e718b428167ab568f17fad029d22318e7009d8",
+  "synthetic_not_native_bookmap": true,
+  "cpu": "Intel Core i9-13900K",
+  "logical_cpus": 32,
+  "system_ram_bytes": 66018590720,
+  "platform": "Ubuntu 26.04.1 x86-64 / Linux 7.0.0-38-generic",
+  "java": "Temurin 17.0.20.1+1",
+  "gradle": "8.10",
+  "python": "3.12.14",
+  "qwen_requests_during_trials": false,
+  "background_desktop_workloads_isolated": false,
+  "trials": [
+    {
+      "trial": 1,
+      "archive": {
+        "process_wall_seconds": 1.5990501630003564,
+        "records_per_process_wall_second": 118822.41370307634,
+        "java_child_peak_rss_bytes": 486514688,
+        "records": 190003,
+        "final_open_orders": 60000,
+        "compressed_bytes": 2783282,
+        "callback_latency": {
+          "count": 380002,
+          "mean_ns": 221,
+          "p50_upper_ns": 64,
+          "p95_upper_ns": 256,
+          "p99_upper_ns": 1024,
+          "max_ns": 23972519,
+          "rate_per_sec": 722380.45111764,
+          "peak_one_second_rate": 0
+        },
+        "journal_high_water": 172949
+      },
+      "bridge": {
+        "target_synthetic_event_rate": 50000,
+        "records": 190003,
+        "received": 190003,
+        "receiver_interval_rate": 40766.22940892085,
+        "final_open_orders": 60000,
+        "delivery_complete": true,
+        "acknowledged_seq": 190003,
+        "queue_high_water": 1444,
+        "journal_high_water": 1377,
+        "callback_latency": {
+          "count": 380002,
+          "mean_ns": 168,
+          "p50_upper_ns": 128,
+          "p95_upper_ns": 512,
+          "p99_upper_ns": 2048,
+          "max_ns": 4595816,
+          "rate_per_sec": "78717.96819910918",
+          "peak_one_second_rate": 100001
+        },
+        "sequence_gaps": 0,
+        "duplicates": 0,
+        "time_reversals": 0,
+        "overflows": 0
+      }
+    },
+    {
+      "trial": 2,
+      "archive": {
+        "process_wall_seconds": 1.5745212259989785,
+        "records_per_process_wall_second": 120673.50815131105,
+        "java_child_peak_rss_bytes": 494063616,
+        "records": 190003,
+        "final_open_orders": 60000,
+        "compressed_bytes": 2783282,
+        "callback_latency": {
+          "count": 380002,
+          "mean_ns": 217,
+          "p50_upper_ns": 64,
+          "p95_upper_ns": 256,
+          "p99_upper_ns": 1024,
+          "max_ns": 33302035,
+          "rate_per_sec": 751831.9714087562,
+          "peak_one_second_rate": 0
+        },
+        "journal_high_water": 163181
+      },
+      "bridge": {
+        "target_synthetic_event_rate": 50000,
+        "records": 190003,
+        "received": 190003,
+        "receiver_interval_rate": 40819.56603596704,
+        "final_open_orders": 60000,
+        "delivery_complete": true,
+        "acknowledged_seq": 190003,
+        "queue_high_water": 1585,
+        "journal_high_water": 1571,
+        "callback_latency": {
+          "count": 380002,
+          "mean_ns": 159,
+          "p50_upper_ns": 128,
+          "p95_upper_ns": 512,
+          "p99_upper_ns": 2048,
+          "max_ns": 4555246,
+          "rate_per_sec": "78731.09690996572",
+          "peak_one_second_rate": 100000
+        },
+        "sequence_gaps": 0,
+        "duplicates": 0,
+        "time_reversals": 0,
+        "overflows": 0
+      }
+    },
+    {
+      "trial": 3,
+      "archive": {
+        "process_wall_seconds": 1.5691467720007495,
+        "records_per_process_wall_second": 121086.82463000935,
+        "java_child_peak_rss_bytes": 485109760,
+        "records": 190003,
+        "final_open_orders": 60000,
+        "compressed_bytes": 2783282,
+        "callback_latency": {
+          "count": 380002,
+          "mean_ns": 223,
+          "p50_upper_ns": 64,
+          "p95_upper_ns": 256,
+          "p99_upper_ns": 1024,
+          "max_ns": 31325946,
+          "rate_per_sec": 751260.0512085415,
+          "peak_one_second_rate": 0
+        },
+        "journal_high_water": 162261
+      },
+      "bridge": {
+        "target_synthetic_event_rate": 50000,
+        "records": 190003,
+        "received": 190003,
+        "receiver_interval_rate": 40702.53938130628,
+        "final_open_orders": 60000,
+        "delivery_complete": true,
+        "acknowledged_seq": 190003,
+        "queue_high_water": 2983,
+        "journal_high_water": 1641,
+        "callback_latency": {
+          "count": 380002,
+          "mean_ns": 187,
+          "p50_upper_ns": 128,
+          "p95_upper_ns": 512,
+          "p99_upper_ns": 2048,
+          "max_ns": 4943008,
+          "rate_per_sec": "78683.92391171421",
+          "peak_one_second_rate": 100000
+        },
+        "sequence_gaps": 0,
+        "duplicates": 0,
+        "time_reversals": 0,
+        "overflows": 0
+      }
+    }
+  ],
+  "limits": [
+    "Short 190,003-record synthetic trial, not sustained native capacity or normal customer hardware certification.",
+    "Archive process wall includes startup, finalization and fixture one-second post-stop sleep.",
+    "Bridge receiver rate uses first-to-last received interval; it cannot be compared directly with archive process-wall rate.",
+    "Callback histogram measures TimeListener and MBO/trade/transition methods; excludes histogram bookkeeping; quantiles are log2 upper bounds.",
+    "No one-way LAN latency or durable receiver ACK inferred.",
+    "Linux peak RSS includes JVM, map and buffers, not queue memory alone.",
+    "Native peak workload and 2x sustained/4x burst acceptance still pending."
+  ]
+}
