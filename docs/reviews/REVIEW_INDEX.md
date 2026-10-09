@@ -1,3 +1,5 @@
+# Latest separate LAN task: [issue16 source5c0e37f](AGENT_A_LAN_IPV4_5c0e37f_REVIEW.md), draftPR20, REVIEW PENDING CHATGPT;70 Java/15 Python local pass, no native acceptance or staging.
+
 # Agent A GitHub review index
 
 Latest new source: [test-only WELCOME diagnostics59ca1e8](AGENT_A_WELCOME_DIAGNOSTICS_59ca1e8_REVIEW.md), REVIEW PENDING CHATGPT; source83af7d48 recovery approval/delivery unchanged. Intermittent cause unproved;58 Java/15 Python pass; exact-source Windows/Ubuntu CI PASS.
