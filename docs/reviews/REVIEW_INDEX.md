@@ -1,6 +1,6 @@
 # Agent A GitHub review index
 
-Latest: [real production recovery integration/source83af7d4](AGENT_A_RECOVERY_INTEGRATION_83af7d4_REVIEW.md), PR19, REVIEW PENDING CHATGPT.56 Java/15 Python local pass; exact-source Windows/Ubuntu CI PASS; native acceptance and preview staging pending.
+Latest: [real production recovery integration/source83af7d4](AGENT_A_RECOVERY_INTEGRATION_83af7d4_REVIEW.md), PR19, exact-source APPROVED_FOR_DEVELOPMENT and UNINSTALLED Windows preview staged/hash verified.56 Java/15 Python local pass; exact-source Windows/Ubuntu CI PASS; native acceptance PENDING. Owner-controlled checklist included.
 
 Historical: [synthetic recovery controls/source303b6ca](AGENT_A_RECOVERY_CONTROLS_303b6ca_REVIEW.md), PR19, new source REVIEW PENDING CHATGPT; native integration unfinished. Helper33fcd9d approval is separate and preserved.
 
