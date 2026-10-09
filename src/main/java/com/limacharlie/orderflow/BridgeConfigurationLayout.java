@@ -40,8 +40,13 @@ final class BridgeConfigurationLayout {
     }
 
     static final class NetworkRow extends JPanel {
-        NetworkRow() {
+        private final java.util.function.IntSupplier layoutWidth;
+
+        NetworkRow() { this(null); }
+
+        NetworkRow(java.util.function.IntSupplier layoutWidth) {
             super(new FlowLayout(FlowLayout.LEFT));
+            this.layoutWidth = layoutWidth;
         }
 
         Dimension singleLineSize() {
@@ -56,7 +61,9 @@ final class BridgeConfigurationLayout {
         @Override
         public Dimension getPreferredSize() {
             Dimension natural = singleLineSize();
-            int width = getParent() == null ? getWidth() : getParent().getWidth();
+            int width = layoutWidth == null
+                    ? (getParent() == null ? getWidth() : getParent().getWidth())
+                    : layoutWidth.getAsInt();
             if (getParent() != null
                     && getParent().getParent() instanceof JViewport viewport
                     && viewport.getWidth() > 0) width = viewport.getWidth();
@@ -124,6 +131,8 @@ final class BridgeConfigurationLayout {
             Component[] children = parent.getComponents();
             int baseline = 0;
             for (Component child : children) {
+                // Multirow discovery controls must not enlarge every existing settings row.
+                if (child instanceof LanBindControls) continue;
                 Dimension size =
                         child instanceof NetworkRow row
                                 ? row.singleLineSize()
@@ -133,11 +142,14 @@ final class BridgeConfigurationLayout {
             rowHeights = new int[children.length];
             for (int i = 0; i < children.length; i++) {
                 int gap = i == children.length - 1 ? 0 : 4;
-                rowHeights[i] = baseline + gap;
+                rowHeights[i] = (children[i] instanceof LanBindControls
+                        ? Math.max(baseline, children[i].getPreferredSize().height) : baseline) + gap;
                 GridBagConstraints constraints = new GridBagConstraints();
                 constraints.gridx = 0;
                 constraints.gridy = i;
-                constraints.weightx = constraints.weighty = 1;
+                constraints.weightx = 1;
+                // Keep the discovery explanation at its measured wrapped height.
+                constraints.weighty = children[i] instanceof LanBindControls ? 0 : 1;
                 constraints.fill = GridBagConstraints.BOTH;
                 constraints.insets = new Insets(0, 0, gap, 0);
                 setConstraints(children[i], constraints);

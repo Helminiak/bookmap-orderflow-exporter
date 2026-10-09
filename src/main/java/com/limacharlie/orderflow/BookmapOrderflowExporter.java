@@ -99,6 +99,8 @@ public class BookmapOrderflowExporter
         public boolean exportTrades = true;
         public boolean bridgeEnabled = false;
         public String bridgeBind = "0.0.0.0";
+        // Legacy/missing values stay manual; automatic discovery is an explicit opt-in.
+        public String bridgeBindMode = "manual";
         public int bridgePort = 5555;
         public int bridgeHealthPort = 5556;
         public int bridgeQueueCapacity = 100_000;
@@ -616,6 +618,14 @@ public class BookmapOrderflowExporter
     // Plain Swing tab contents also allow geometry checks without the Bookmap host window.
     static JTabbedPane buildExporterTabs(
             Settings settings, Api api, BookmapOrderflowExporter instance) {
+        return buildExporterTabs(settings, api, instance, () -> {
+            try { return LocalLanIpv4.snapshot(); }
+            catch (java.net.SocketException e) { throw new IllegalStateException(e); }
+        });
+    }
+
+    static JTabbedPane buildExporterTabs(Settings settings, Api api, BookmapOrderflowExporter instance,
+            java.util.function.Supplier<java.util.List<LocalLanIpv4.Address>> interfaces) {
         JPanel configPanel = new JPanel(new BorderLayout(4, 4));
         BridgeRecoveryControls recovery = new BridgeRecoveryControls(settings.bridgeEnabled);
         configPanel.add(recovery, BorderLayout.NORTH);
@@ -699,6 +709,8 @@ public class BookmapOrderflowExporter
                         new SpinnerNumberModel(settings.bridgeQueueCapacity, 1, 5_000_000, 1000));
         fields.add(bridgeBox);
         fields.add(liveJournalBox);
+        LanBindControls bindControls = new LanBindControls(bindField, settings.bridgeBindMode, interfaces, api != null);
+        fields.add(bindControls);
         JPanel bridgeRow = new BridgeConfigurationLayout.NetworkRow();
         bridgeRow.add(new JLabel("Bind:"));
         bridgeRow.add(bindField);
@@ -744,6 +756,7 @@ public class BookmapOrderflowExporter
                     if (api == null) {
                         return;
                     }
+                    if (bridgeBox.isSelected() && !bindControls.validateForApply()) return;
                     settings.exportMbo = exportMboBox.isSelected();
                     settings.exportTrades = exportTradesBox.isSelected();
                     settings.outputDirectory = outputField.getText().trim();
@@ -753,6 +766,7 @@ public class BookmapOrderflowExporter
                     settings.bridgeEnabled = bridgeBox.isSelected();
                     settings.responsiveLiveJournal = liveJournalBox.isSelected();
                     settings.bridgeBind = bindField.getText().trim();
+                    settings.bridgeBindMode = bindControls.modeKey();
                     settings.bridgePort = ((Number) portSpinner.getValue()).intValue();
                     settings.bridgeHealthPort = ((Number) healthSpinner.getValue()).intValue();
                     settings.bridgeQueueCapacity =
