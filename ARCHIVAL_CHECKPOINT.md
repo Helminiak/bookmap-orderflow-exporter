@@ -1,0 +1,3 @@
+# Archival Agent A / local Qwen draft — not an accepted release
+
+Preserved at owner-requested end-of-day checkpoint20261009. This scratch branch contains historical model-generated intermediate source/tests, superseded by the reviewed/development branches. No qualification of this exact archival tree, no fresh tests, no native acceptance or installation authorization is claimed. Do not cherry-pick or substitute it for PR19 or PR20 without independently inspecting its diff. Start from the morning handoff on agent-a/native-bridge-recovery-20261009 or agent-a/lan-ipv4-selection-20261009. Original files are preserved rather than discarded.
