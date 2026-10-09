@@ -6,7 +6,7 @@ import java.awt.event.*;
 import javax.swing.*;
 
 /**
- * Bounded synthetic Swing prototype for issue17 (draft-only bridge selection).
+ * Settings-panel recovery controls for issue17 (draft-only bridge selection).
  *
  * <p>EDT-only. No network, file, timer, thread, Apply/commit, or runtime-validity mutation.
  *
@@ -86,6 +86,7 @@ final class BridgeRecoveryControls extends JPanel {
                     }
                 };
         textArea.setEditable(false);
+        textArea.putClientProperty("orderflow.navigation", true);
         textArea.setLineWrap(true);
         textArea.setWrapStyleWord(true);
         textArea.setOpaque(false);
