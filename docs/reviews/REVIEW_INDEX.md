@@ -1,6 +1,8 @@
 # Agent A GitHub review index
 
-Latest: [recovery draft/source33fcd9d](AGENT_A_RECOVERY_DRAFT_33fcd9d_REVIEW.md), draftPR19, REVIEW PENDING CHATGPT. This unreferenced foundation does not fix native recovery reachability; actual installed review JAR remains source5f840f3. Routine development policy is [here](AGENT_A_CHATGPT_REVIEW_POLICY.md).
+Latest: [synthetic recovery controls/source303b6ca](AGENT_A_RECOVERY_CONTROLS_303b6ca_REVIEW.md), PR19, new source REVIEW PENDING CHATGPT; native integration unfinished. Helper33fcd9d approval is separate and preserved.
+
+Historical: [recovery draft/source33fcd9d](AGENT_A_RECOVERY_DRAFT_33fcd9d_REVIEW.md), draftPR19, REVIEW PENDING CHATGPT. This unreferenced foundation does not fix native recovery reachability; actual installed review JAR remains source5f840f3. Routine development policy is [here](AGENT_A_CHATGPT_REVIEW_POLICY.md).
 
 Historical: [v0.5a notice correction/source5f840f3](AGENT_A_NOTICE_LAYOUT_5f840f3_REVIEW.md), **READY FOR OWNER REVIEW; native PENDING; STOPPED; Agent B paused**. Exact-source Windows/Ubuntu push and PR CI pass. Later report commits are separate from artifact source.
 
