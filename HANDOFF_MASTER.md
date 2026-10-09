@@ -1,3 +1,7 @@
+# OWNER STOPPED — morning resume index
+
+[Minimal restart index](handoff/CURRENT_STATE.md) and [complete20261009 handoff](docs/handoff/AGENT_A_MORNING_RESUME_20261009.md) supersede historical current-task headers below. Explicit owner RESUME required; no overnight development. Exact final checkpoints are in PR19/PR20 STOPPED_CHECKPOINT comments.
+
 ## Latest Agent A work — revision6, WELCOME diagnostic checkpoint
 
 Current new test source59ca1e8b4968b092fb35dcfdcc2ea16fb51ce98f is test-only, REVIEW PENDING CHATGPT. [Evidence/next-action packet](docs/reviews/AGENT_A_WELCOME_DIAGNOSTICS_59ca1e8_REVIEW.md): pinned CI NPE identified,200 baseline and200 instrumented affected-case executions pass;58 Java/15 Python clean checks pass. Unknown intermittent CI cause remains open; no runtime fix guessed, no timeout/retry/assertion suppression. New stub tests deliberately fail a withheld WELCOME and check complete diagnostics/single attempt; fixture cleanup improved. Local Qwen bounded review completed after initial lock-busy refusal; helper semantics confirmed, cleanup/send hypotheses independently assessed against context-owning callers. Issue16 follows as a distinct isolated task with backward-compatible auto/manual migration. Current source83af7d48 is already approved and its Windows Downloads preview delivered/hash-verified; do not wait/re-request that approval or replace/install it. Owner native test remains PENDING. Older headers below are historical, not current approval gates.
