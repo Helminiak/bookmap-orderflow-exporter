@@ -208,6 +208,27 @@ class BridgeNoticeViewportTest {
     }
 
     @Test
+    void fractionalFontTransitionsMeasureThePaintedTerminalSummaryRow() throws Exception {
+        SwingUtilities.invokeAndWait(
+                () -> {
+                    var notice = new BridgeOperatorNotice(() -> states()[1]);
+                    JPanel root = host(notice);
+                    render(root, 760, 500);
+                    for (float points : new float[] {11f, 13.75f, 16.5f, 21f, 11f}) {
+                        Font font = new Font(Font.SANS_SERIF, Font.PLAIN, 11).deriveFont(points);
+                        notice.criticalText().setFont(font);
+                        notice.completeText().setFont(font);
+                        render(root, 280, 500);
+                        visibleEnd(notice.criticalText());
+                        allTextReachable(notice);
+                        render(root, 760, 500);
+                        visibleEnd(notice.criticalText());
+                    }
+                    notice.removeNotify();
+                });
+    }
+
+    @Test
     void outerBookmapViewportKeepsTabsAndEveryConfigurationRowReachable() throws Exception {
         SwingUtilities.invokeAndWait(
                 () -> {

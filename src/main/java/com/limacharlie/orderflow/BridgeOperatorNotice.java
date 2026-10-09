@@ -61,57 +61,55 @@ final class BridgeOperatorNotice extends JPanel {
             putClientProperty("orderflow.navigation", true);
         }
 
+        private final JTextArea measurer = new JTextArea();
+
+        @Override
+        public void updateUI() {
+            super.updateUI();
+            if (measurer != null) measurer.updateUI();
+        }
+
         Dimension wrappedSize(int width) {
-            java.awt.Insets insets = getInsets();
-            javax.swing.text.View view = getUI().getRootView(this);
-            view.setSize(Math.max(1, width - insets.left - insets.right), Float.MAX_VALUE);
-            float height = view.getPreferredSpan(javax.swing.text.View.Y_AXIS);
+            // A separate view measures the real terminal glyph at the future assigned width.
+            // Mutating the painted RootView's width during preferred-size negotiation can
+            // leave a stale visual row (notably Windows Tahoma at fractional font scales).
+            if (measurer.getDocument() != getDocument()) measurer.setDocument(getDocument());
+            measurer.setFont(getFont());
+            measurer.setBorder(getBorder());
+            measurer.setMargin(getMargin());
+            measurer.setLineWrap(true);
+            measurer.setWrapStyleWord(true);
+            measurer.setSize(Math.max(1, width), Integer.MAX_VALUE);
+            Dimension natural = measurer.getPreferredSize();
             try {
-                // WrappedPlainView's span may omit the terminal visual row at a wrap boundary.
-                // Include the rendered last-character rectangle, not an arbitrary extra row.
                 var end =
-                        view.modelToView(
+                        measurer.getUI()
+                                .modelToView2D(
+                                        measurer,
                                         Math.max(0, getDocument().getLength() - 1),
-                                        new java.awt.Rectangle(
-                                                0,
-                                                0,
-                                                Math.max(1, width - insets.left - insets.right),
-                                                Integer.MAX_VALUE),
-                                        javax.swing.text.Position.Bias.Forward)
-                                .getBounds();
-                height = Math.max(height, end.y + end.height);
+                                        javax.swing.text.Position.Bias.Forward);
+                int height =
+                        Math.max(
+                                natural.height,
+                                end == null
+                                        ? 0
+                                        : (int) Math.ceil(end.getMaxY())
+                                                + measurer.getInsets().bottom);
+                return new Dimension(width, height);
             } catch (javax.swing.text.BadLocationException e) {
                 throw new IllegalStateException("Notice document changed during EDT layout", e);
             }
-            return new Dimension(width, (int) Math.ceil(height) + insets.top + insets.bottom);
         }
 
         @Override
         public Dimension getPreferredSize() {
             int width =
-                    getParent() instanceof JViewport viewport
-                            ? viewport.getExtentSize().width
-                            : getWidth();
-            if (allocatedWidth > 0) width = allocatedWidth;
-            if (width <= 0 || getUI() == null) return super.getPreferredSize();
-            Dimension measured = wrappedSize(width);
-            if (getWidth() == width && getHeight() > 0) {
-                try {
-                    var end =
-                            getUI().modelToView2D(
-                                            this,
-                                            Math.max(0, getDocument().getLength() - 1),
-                                            javax.swing.text.Position.Bias.Forward);
-                    if (end != null)
-                        measured.height =
-                                Math.max(
-                                        measured.height,
-                                        (int) Math.ceil(end.getMaxY()) + getInsets().bottom);
-                } catch (javax.swing.text.BadLocationException e) {
-                    throw new IllegalStateException("Notice document changed during EDT layout", e);
-                }
-            }
-            return measured;
+                    allocatedWidth > 0
+                            ? allocatedWidth
+                            : getParent() instanceof JViewport viewport
+                                    ? viewport.getExtentSize().width
+                                    : getWidth();
+            return width > 0 && getUI() != null ? wrappedSize(width) : super.getPreferredSize();
         }
     }
 
@@ -124,7 +122,10 @@ final class BridgeOperatorNotice extends JPanel {
         private void prepare(java.awt.Container parent, boolean allocating) {
             if (!(getLayoutComponent(NORTH) instanceof BridgeOperatorNotice notice)) return;
             java.awt.Insets insets = parent.getInsets();
-            int width = Math.max(1, parent.getWidth() - insets.left - insets.right);
+            int width =
+                    parent.getWidth() > 0
+                            ? Math.max(1, parent.getWidth() - insets.left - insets.right)
+                            : 520;
             var viewport = (JViewport) SwingUtilities.getAncestorOfClass(JViewport.class, parent);
             int height =
                     viewport != null && viewport.getExtentSize().height > 0
@@ -241,7 +242,6 @@ final class BridgeOperatorNotice extends JPanel {
                                 - border.left
                                 - border.right
                                 - details.getVerticalScrollBar().getPreferredSize().width);
-        message.allocatedWidth = textWidth;
         int natural =
                 headingHeight(width)
                         + 4

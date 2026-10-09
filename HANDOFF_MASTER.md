@@ -1,3 +1,7 @@
+# Windows CI font-metrics correction
+
+Initial UI source ba7772d passed35 local Java/15 Python and UbuntuCI, but both Windows jobs exposed a clipped terminal critical-summary glyph at narrow280px / fractional Tahoma font (allocated55px vs actual72px). Correction measures a separate text view at the upcoming assigned width instead of mutating the painted RootView; fractional-font transition test added. Prior ba7772d artifact is superseded and must not be promoted.36 Java tests pass locally; clean final-source package/CI pending below. Qwen review independently identified the summary clipping risk; unsupported fixed-height/high-severity scrollbar and document-length claims rejected. No live install or other subsystem edits.
+
 # Current owner authorization — Agent A only, v0.5a UI review JAR
 
 Owner GO after independently verified joint qualification authorizes only correction/build/tests/preparation of this v0.5a review JAR on feature/agent-a-receiver-warning / PR15. AgentB remains paused; no private branches touched, install/activation/merge/deploy/release unauthorized. Older qualification STOP entries below are historical.
