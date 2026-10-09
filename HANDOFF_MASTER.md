@@ -1,3 +1,7 @@
+# Current owner-review checkpoint — source5f840f3
+
+AGENT A — BOOKMAP v0.5a JAR READY FOR OWNER REVIEW. STOPPED for owner inspection; Agent B paused. [Complete source-bound handoff and artifact evidence](docs/reviews/AGENT_A_NOTICE_LAYOUT_5f840f3_REVIEW.md).36 Java/15 Python and exact-source Windows/Ubuntu push+PR CI pass. Clean tested package, local repeat checksums, packaged class/source correspondence and inspected realized synthetic Swing screenshots pass. Native Bookmap and actual Windows DPI PENDING. Windows helper read-only ping/list/capture succeeded; no JAR installed or activated. Source5f840f3 remains artifact anchor; later documentation SHA is separate. Next action owner inspection/explicit safe-install authorization; no autonomous next milestone.
+
 # Regression readiness evidence — UI source5aa1ddc
 
 36 Java/15 Python clean local tests and Windows/Ubuntu pushCI passed; source5aa PRUbuntu failed at BridgeHealthQueryTest:89 before first.close/rebind (one-second first startup query returned null). This is not evidence that ports failed to rebind. The test now observes asynchronous worker readiness with the existing bounded helper, retains the single one-second query/validity checks and always closes first fixture on assertion failure. No bridge production changes or test-level reruns/assertion suppression. Exact reason for remote startup delay unproved; old intermittentWELCOME issue remains distinct/open. Final source package SHA and exact-head CI must be regenerated/checked.
