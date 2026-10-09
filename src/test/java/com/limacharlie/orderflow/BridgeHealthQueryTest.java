@@ -21,32 +21,26 @@ class BridgeHealthQueryTest {
             assertNotNull(ready, bridge.status());
             assertTrue(bridge.offer(new CanonicalEvent(1, 1, () -> "{\"seq\":1}")));
             assertTrue(bridge.offerTerminal(new CanonicalEvent(2, 2, () -> "{\"seq\":2}")));
-            var receiver = context.createSocket(SocketType.DEALER);
-            receiver.setLinger(0);
-            receiver.setReceiveTimeOut(2000);
-            receiver.connect("tcp://127.0.0.1:" + market);
-            receiver.send("HELLO owner 0");
-            String welcome = receiver.recvStr(),
-                    first = receiver.recvStr(),
-                    terminal = receiver.recvStr();
-            assertNotNull(welcome, bridge.status());
-            assertNotNull(first, bridge.status());
-            assertNotNull(terminal, bridge.status());
-            assertTrue(welcome.contains("WELCOME"));
-            assertTrue(first.contains("\"seq\":1"));
-            assertTrue(terminal.contains("\"seq\":2"));
-            receiver.send("ACK owner 2");
-            long deadline = System.nanoTime() + 2_000_000_000L;
-            while (bridge.depth() != 0 && System.nanoTime() < deadline) Thread.sleep(1);
-            assertEquals(0, bridge.depth());
-            bridge.close();
-            assertTrue(bridge.status().contains("\"delivery_complete\":true"));
-            assertTrue(bridge.status().contains("\"state\":\"STOPPED\""));
-            assertTrue(
-                    bridge.status()
-                            .contains(
-                                    "\"ack_guarantee\":\"receiver_validated_in_memory_not_durable\""));
-            assertFalse(bridge.invalid());
+            try (var peer = new SyntheticBridgePeer(context, market, bridge::status)) {
+                peer.send("HELLO owner 0");
+                String welcome = peer.receive("WELCOME"),
+                        first = peer.receive("START"), terminal = peer.receive("STOP");
+                assertTrue(welcome.contains("WELCOME"));
+                assertTrue(first.contains("\"seq\":1"));
+                assertTrue(terminal.contains("\"seq\":2"));
+                peer.send("ACK owner 2");
+                long deadline = System.nanoTime() + 2_000_000_000L;
+                while (bridge.depth() != 0 && System.nanoTime() < deadline) Thread.sleep(1);
+                assertEquals(0, bridge.depth());
+                bridge.close();
+                assertTrue(bridge.status().contains("\"delivery_complete\":true"));
+                assertTrue(bridge.status().contains("\"state\":\"STOPPED\""));
+                assertTrue(
+                        bridge.status()
+                                .contains(
+                                        "\"ack_guarantee\":\"receiver_validated_in_memory_not_durable\""));
+                assertFalse(bridge.invalid());
+            }
         } finally {
             bridge.close();
         }
