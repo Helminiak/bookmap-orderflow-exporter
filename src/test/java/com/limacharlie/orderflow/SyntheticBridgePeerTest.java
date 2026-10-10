@@ -6,26 +6,39 @@ import org.junit.jupiter.api.Test;
 import org.zeromq.*;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.Executors;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 class SyntheticBridgePeerTest {
     @Test
     void concurrentPublisherStartupAndFirstHelloRemainObservable() throws Exception {
-        int workers = 8;
-        var pool = Executors.newFixedThreadPool(workers);
-        try {
-            List<java.util.concurrent.Future<?>> runs = new ArrayList<>();
+        for (int workers : List.of(4, 8, 16)) {
+            Set<Integer> selectedPorts = new HashSet<>();
+            int[][] ports = new int[workers][2];
             for (int worker = 0; worker < workers; worker++) {
-                int workerId = worker;
-                runs.add(
-                        pool.submit(
-                                () -> {
-                                    for (int iteration = 0; iteration < 2; iteration++) {
-                                        int market = ExporterTest.freePort();
-                                        int health = ExporterTest.freePort();
-                                        while (health == market) health = ExporterTest.freePort();
+                ports[worker][0] = unusedPort(selectedPorts);
+                ports[worker][1] = unusedPort(selectedPorts);
+            }
+            var ready = new CountDownLatch(workers);
+            var start = new CountDownLatch(1);
+            var pool = Executors.newFixedThreadPool(workers);
+            try {
+                List<java.util.concurrent.Future<?>> runs = new ArrayList<>();
+                for (int worker = 0; worker < workers; worker++) {
+                    int workerId = worker;
+                    int market = ports[worker][0];
+                    int health = ports[worker][1];
+                    runs.add(
+                            pool.submit(
+                                    () -> {
+                                        String id = "stress-" + workers + "-" + workerId;
+                                        var phase = new AtomicReference<>("publisher startup");
                                         var publisher =
                                                 new LiveBridge(
                                                         "127.0.0.1",
@@ -37,43 +50,72 @@ class SyntheticBridgePeerTest {
                                                         () -> "{}");
                                         try {
                                             ExporterTest.awaitBridgeReady(health);
+                                            long healthReadyNanos = System.nanoTime();
                                             assertTrue(
                                                     publisher.offer(
                                                             new CanonicalEvent(
                                                                     1,
                                                                     1,
                                                                     () ->
-                                                                            "{\"type\":\"START\",\"seq\":1}")));
+                                                                            "{\"type\":\"START\",\"seq\":1}")),
+                                                    "START queue failed id=" + id);
                                             try (var context = new ZContext();
                                                     var peer =
                                                             new SyntheticBridgePeer(
                                                                     context,
                                                                     market,
                                                                     publisher::status)) {
-                                                peer.send(
-                                                        "HELLO stress-"
-                                                                + workerId
-                                                                + "-"
-                                                                + iteration
-                                                                + " 0");
+                                                ready.countDown();
+                                                phase.set("barrier wait");
                                                 assertTrue(
-                                                        peer.receive("WELCOME")
-                                                                .contains("WELCOME"));
+                                                        start.await(30, TimeUnit.SECONDS),
+                                                        "start barrier timed out id=" + id);
+                                                phase.set("HELLO send");
+                                                peer.send("HELLO " + id + " 0");
+                                                phase.set("WELCOME receive");
+                                                assertTrue(
+                                                        peer.receive("WELCOME").contains("WELCOME"),
+                                                        "WELCOME mismatch id=" + id);
+                                                phase.set("first START receive");
                                                 assertTrue(
                                                         peer.receive("START").contains("\"seq\":1"),
-                                                        publisher.status());
+                                                        "first START mismatch id=" + id);
+                                                phase.set("complete");
                                             }
+                                            return "id=" + id + " market=" + market + " health=" + health
+                                                    + " healthReadyNanos=" + healthReadyNanos;
+                                        } catch (Throwable failure) {
+                                            throw new AssertionError(
+                                                    "WELCOME stress failed level=" + workers
+                                                            + " id=" + id
+                                                            + " market=" + market
+                                                            + " health=" + health
+                                                            + " phase=" + phase.get()
+                                                            + " publisher=" + publisher.status(),
+                                                    failure);
                                         } finally {
                                             publisher.close();
+                                            ready.countDown();
                                         }
-                                    }
-                                    return null;
-                                }));
+                                    }));
+                }
+                assertTrue(ready.await(45, TimeUnit.SECONDS), "workers did not reach barrier level=" + workers);
+                start.countDown();
+                for (var run : runs) run.get(45, TimeUnit.SECONDS);
+            } finally {
+                start.countDown();
+                pool.shutdownNow();
+                assertTrue(pool.awaitTermination(10, TimeUnit.SECONDS), "workers did not terminate level=" + workers);
             }
-            for (var run : runs) run.get();
-        } finally {
-            pool.shutdownNow();
         }
+    }
+
+    private static int unusedPort(Set<Integer> selected) throws Exception {
+        int port;
+        do {
+            port = ExporterTest.freePort();
+        } while (!selected.add(port));
+        return port;
     }
 
     @Test
