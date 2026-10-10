@@ -23,6 +23,8 @@ python -m unittest discover -s tests -v
 python tools/validate_export.py CAPTURE.ndjson.gz --summary CAPTURE.summary.json
 ```
 
+For an explicit, time-bounded JDK 17 / Gradle 8.10 run, see the [Java test-runner contract](docs/TEST_RUNNER_CONTRACT.md).
+
 Outputs: `build/libs/bookmap-orderflow-exporter-v0.5a.jar`, `build/distributions/orderflow-v0.5a-windows-smoke-test.zip`. Close Bookmap before replacing the JAR; install only one exporter addon. Enable **Orderflow Raw Exporter v0.5a** for an instrument. One **Orderflow exporter** panel contains **Configuration** (opens first), **Live status** and **Information**. Bookmap's outer scrollbar scrolls the entire Configuration page, including Apply at the bottom; there is no smaller nested settings viewport. Network controls keep measured wrapping. Status diagnostics retain their own scrolling. Information provides the preview label and original help/support content. Apply saves settings/reloads and begins a new file/session. A short disable pause can occur during archive finalization and bridge cleanup. UI revision 0.5a does not change the canonical schema, transport or software metadata version 0.5.0.
 
 The ZIP contains JAR, BAT, PS1 and README. Keep them together and run BAT on Windows, not PS1 double-click. It discovers Java/LAN health and reports PASS/FAIL/INCONCLUSIVE without registering a second market receiver. The private receiver must be started before opening/enabling a fresh Bookmap bridge session. Full setup/recovery is in [LINUX_BRIDGE.md](docs/LINUX_BRIDGE.md) and [testing/troubleshooting](docs/TESTING_AND_TROUBLESHOOTING.md).
