@@ -28,3 +28,41 @@ BookmapOrderflowExports/
 # Operating-system metadata
 .DS_Store
 Thumbs.db
+
+# Multi-LLM source-control hygiene (additive; existing exclusions retained)
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+node_modules/
+build/
+dist/
+.DS_Store
+Thumbs.db
+*.tmp
+*.bak
+*.swp
+model-weights/
+models/cache/
+*.gguf
+*.safetensors
+
+# Bulk market data remain external; fixtures require explicit review
+*.bmf
+*.BMF
+*.ndjson
+*.ndjson.gz
+*.parquet
+*.csv
+datasets/
+raw-data/
+# Small sanitized/synthetic fixtures are allowed under tests/fixtures.
+!tests/fixtures/**/*.ndjson
+!tests/fixtures/**/*.ndjson.gz
+!tests/fixtures/**/*.parquet
+!tests/fixtures/**/*.csv
