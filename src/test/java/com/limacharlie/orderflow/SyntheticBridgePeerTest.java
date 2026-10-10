@@ -5,9 +5,105 @@ import static org.junit.jupiter.api.Assertions.*;
 import org.junit.jupiter.api.Test;
 import org.zeromq.*;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 
 class SyntheticBridgePeerTest {
+    @Test
+    void concurrentPublisherStartupAndFirstHelloRemainObservable() throws Exception {
+        int workers = 8;
+        var pool = Executors.newFixedThreadPool(workers);
+        try {
+            List<java.util.concurrent.Future<?>> runs = new ArrayList<>();
+            for (int worker = 0; worker < workers; worker++) {
+                int workerId = worker;
+                runs.add(
+                        pool.submit(
+                                () -> {
+                                    for (int iteration = 0; iteration < 2; iteration++) {
+                                        int market = ExporterTest.freePort();
+                                        int health = ExporterTest.freePort();
+                                        while (health == market) health = ExporterTest.freePort();
+                                        var publisher =
+                                                new LiveBridge(
+                                                        "127.0.0.1",
+                                                        market,
+                                                        health,
+                                                        1,
+                                                        "SYNTH",
+                                                        .25,
+                                                        () -> "{}");
+                                        try {
+                                            ExporterTest.awaitBridgeReady(health);
+                                            assertTrue(
+                                                    publisher.offer(
+                                                            new CanonicalEvent(
+                                                                    1,
+                                                                    1,
+                                                                    () ->
+                                                                            "{\"type\":\"START\",\"seq\":1}")));
+                                            try (var context = new ZContext();
+                                                    var peer =
+                                                            new SyntheticBridgePeer(
+                                                                    context,
+                                                                    market,
+                                                                    publisher::status)) {
+                                                peer.send(
+                                                        "HELLO stress-"
+                                                                + workerId
+                                                                + "-"
+                                                                + iteration
+                                                                + " 0");
+                                                assertTrue(
+                                                        peer.receive("WELCOME")
+                                                                .contains("WELCOME"));
+                                                assertTrue(
+                                                        peer.receive("START").contains("\"seq\":1"),
+                                                        publisher.status());
+                                            }
+                                        } finally {
+                                            publisher.close();
+                                        }
+                                    }
+                                    return null;
+                                }));
+            }
+            for (var run : runs) run.get();
+        } finally {
+            pool.shutdownNow();
+        }
+    }
+
+    @Test
+    void locallyAcceptedHelloWithoutRouterConnectionDoesNotReachPublisher() throws Exception {
+        try (var context = new ZContext()) {
+            int market = ExporterTest.freePort(), health = ExporterTest.freePort();
+            while (health == market) health = ExporterTest.freePort();
+            var publisher =
+                    new LiveBridge("127.0.0.1", market, health, 1, "SYNTH", .25, () -> "{}");
+            try {
+                ExporterTest.awaitBridgeReady(health);
+                try (var peer =
+                        new SyntheticBridgePeer(context, ExporterTest.freePort(), publisher::status)) {
+                    // DEALER accepts this into its local queue although no ROUTER owns this port.
+                    peer.send("HELLO absent-route 0");
+                    var failure =
+                            assertThrows(AssertionError.class, () -> peer.receive("WELCOME"));
+                    assertTrue(failure.getMessage().contains("send HELLO accepted=true"));
+                    assertTrue(failure.getMessage().contains("receive WELCOME present=false"));
+                    assertTrue(failure.getMessage().contains("\"state\":\"WAITING_RECEIVER\""));
+                    assertTrue(failure.getMessage().contains("\"receiver\":\"none\""));
+                    assertEquals(0, publisher.depth());
+                    assertFalse(publisher.invalid());
+                }
+            } finally {
+                publisher.close();
+            }
+        }
+    }
+
     @Test
     void withheldWelcomeFailsOnceWithConnectionSendReceiveAndHealthEvidence() throws Exception {
         try (var context = new ZContext()) {
