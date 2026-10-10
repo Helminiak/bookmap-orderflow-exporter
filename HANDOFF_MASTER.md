@@ -1,6 +1,10 @@
-# OWNER STOPPED — morning resume index
+# Agent A bounded investigation checkpoint
 
-[Minimal restart index](handoff/CURRENT_STATE.md) and [complete20261009 handoff](docs/handoff/AGENT_A_MORNING_RESUME_20261009.md) supersede historical current-task headers below. Explicit owner RESUME required; no overnight development. Exact final checkpoints are in PR19/PR20 STOPPED_CHECKPOINT comments.
+[Current bounded Agent A checkpoint](docs/reviews/AGENT_A_WELCOME_DELIVERY_STAGE_617ed5a_REVIEW.md) supersedes the prior shutdown status: the owner explicitly resumed one manually supervised WELCOME investigation. PR19 is the race branch; PR20 remains a separate LAN task. Test-only source `617ed5a` is pushed for independent review; no runtime cause or correction is established. Stop at that review gate. Existing owner-only Bookmap, live capture, deployment, merge and release restrictions remain. The [minimal restart index](handoff/CURRENT_STATE.md) and [complete prior handoff](docs/handoff/AGENT_A_MORNING_RESUME_20261009.md) retain historical inventory.
+
+## Current Agent A checkpoint — WELCOME delivery stage
+
+The added loopback tests distinguish a locally accepted HELLO with no route from a connected ROUTER that receives HELLO but withholds WELCOME. Sixteen parallel publisher handshakes passed; they did not reproduce the intermittent CI failure. The confirmed test failure remains `recvStr() == null` followed by a `.contains("WELCOME")` NPE; the cause of the missing response remains unproved. Exact-source local verification: 60 Java tests and all packaging/smoke tasks passed; 15 Python tests passed. See the [source-bound review packet](docs/reviews/AGENT_A_WELCOME_DELIVERY_STAGE_617ed5a_REVIEW.md). Await independent review; no production transport changes are justified by the evidence so far.
 
 ## Latest Agent A work — revision6, WELCOME diagnostic checkpoint
 

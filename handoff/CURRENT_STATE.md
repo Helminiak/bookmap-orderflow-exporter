@@ -1,6 +1,10 @@
-# Agent A restart index — owner STOPPED
+# Agent A checkpoint — owner-resumed WELCOME investigation
 
-**No automatic development. Explicit owner RESUME required.** Latest private scope revision7 is end-of-day preservation, not a development assignment. Installed Bookmap, trading/capture/security and approved Windows preview are unchanged. No merge/release/install/restart/activation/Apply authorization.
+The owner explicitly resumed one bounded, manually supervised task after the previous STOP. The current checkpoint is test-only source `617ed5a0507ab7769efd00ab85c3d1c7758c63f2` on `agent-a/native-bridge-recovery-20261009` / PR19. Independent source review is pending; stop at that gate. PR20 remains the separate stacked LAN task and is unchanged.
+
+The added synthetic tests distinguish locally queued HELLO with no route from a ROUTER that received HELLO but withheld WELCOME. A 16-handshake concurrent startup probe passed; the intermittent CI failure was not reproduced. The known null-WELCOME failure stage is confirmed; its trigger is unresolved and no production fix is claimed. Full local checks: 60 Java tests plus package/bundle smoke tasks and 15 Python tests passed. See [source-bound packet](../docs/reviews/AGENT_A_WELCOME_DELIVERY_STAGE_617ed5a_REVIEW.md).
+
+All prior owner-only restrictions remain: no Bookmap install/restart/activation/Apply, live capture, market operations, deployment, merge, release, credentials or security changes. No unattended execution.
 
 ## Read first
 
