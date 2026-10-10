@@ -1,6 +1,6 @@
 # Agent A GitHub review index
 
-Latest new source: [WELCOME delivery-stage tests617ed5a](AGENT_A_WELCOME_DELIVERY_STAGE_617ed5a_REVIEW.md), independent GPT-6 review pending; PR19 race branch. Local60 Java/15 Python and package/bundle checks pass. No intermittent failure reproduced or runtime fix claimed. Earlier [diagnostic source59ca1e8](AGENT_A_WELCOME_DIAGNOSTICS_59ca1e8_REVIEW.md) and source83af7d48 recovery approval/delivery remain distinct historical checkpoints.
+Latest new source: [synchronized WELCOME diagnostics cdfe981](AGENT_A_WELCOME_SYNC_DIAGNOSTICS_CDfe981_REVIEW.md), PR19 race branch; exact-head CI and independent GPT-6 review pending. Baseline 6f649b7 has an independently reproduced four-client Ubuntu failure. The new test-only matrix completed 84 synchronized handshakes locally; full60 Java/15 Python and packaging checks pass, but the defect remains OPEN. Earlier [delivery-stage source617ed5a](AGENT_A_WELCOME_DELIVERY_STAGE_617ed5a_REVIEW.md), [diagnostic source59ca1e8](AGENT_A_WELCOME_DIAGNOSTICS_59ca1e8_REVIEW.md), and source83af7d48 recovery approval/delivery remain distinct historical checkpoints.
 
 Latest: [real production recovery integration/source83af7d4](AGENT_A_RECOVERY_INTEGRATION_83af7d4_REVIEW.md), PR19, exact-source APPROVED_FOR_DEVELOPMENT and UNINSTALLED Windows preview staged/hash verified.56 Java/15 Python local pass; exact-source Windows/Ubuntu CI PASS; native acceptance PENDING. Owner-controlled checklist included.
 
