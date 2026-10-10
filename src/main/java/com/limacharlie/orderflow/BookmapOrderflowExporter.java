@@ -592,7 +592,7 @@ public class BookmapOrderflowExporter
         return buildPanels(new Settings(), null, null);
     }
 
-    private static StrategyPanel[] buildPanels(
+    static StrategyPanel[] buildPanels(
             Settings settings, Api api, BookmapOrderflowExporter instance) {
         StrategyPanel panel = new StrategyPanel("Orderflow exporter");
         panel.setLayout(new BridgeOperatorNotice.HostLayout());
@@ -617,6 +617,8 @@ public class BookmapOrderflowExporter
     static JTabbedPane buildExporterTabs(
             Settings settings, Api api, BookmapOrderflowExporter instance) {
         JPanel configPanel = new JPanel(new BorderLayout(4, 4));
+        BridgeRecoveryControls recovery = new BridgeRecoveryControls(settings.bridgeEnabled);
+        configPanel.add(recovery, BorderLayout.NORTH);
 
         BridgeConfigurationLayout.Fields fields = new BridgeConfigurationLayout.Fields();
 
@@ -680,6 +682,9 @@ public class BookmapOrderflowExporter
         fields.add(bufferingNote);
 
         JCheckBox bridgeBox = new JCheckBox("Live Linux bridge (optional)", settings.bridgeEnabled);
+        // One draft model: either visible checkbox stages the same next-Apply preference.
+        // Neither selection writes Settings nor touches the running bridge.
+        bridgeBox.setModel(recovery.bridgeCheckbox().getModel());
         JCheckBox liveJournalBox =
                 new JCheckBox(
                         "Responsive LIVE journal (overflow invalidates archive)",

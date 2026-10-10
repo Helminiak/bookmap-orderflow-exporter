@@ -1,0 +1,22 @@
+# Agent A: engineering review and approvals (2026-10-09)
+
+Owner direction: ChatGPT handles ordinary engineering review/approval; interrupt owner only when materially necessary. This document authorizes scoped, reversible development in agent-a/native-bridge-recovery-20261009 without repeated GO requests. It does not bypass Codex interactive permission prompts or grant access beyond available tools.
+
+Routine work without repeated owner GO: inspect code and sanitized build logs; ask local Qwen Agent C for bounded deterministic test/code tasks in a SEPARATE PUBLIC exporter worktree; implement UI behavior and tests on Agent A's own branch; run JDK17/Gradle validation; inspect diffs, commit/push reversible checkpoints and prepare draft PRs. Do not touch main or other agents' branches. Use ChatGPT through the conversation/GitHub evidence for independent review; its explicit response is required to claim ChatGPT-approved. If unavailable, annotate REVIEW PENDING CHATGPT and continue separate low-risk tests, do not silently approve high-risk Java transport changes.
+
+Owner-only approval: replacing/installing Windows JAR; restarting/reloading Bookmap or exporter; touching live/simulated brokerage, market feed or captures; changing firewall, security credentials or external access; material paid cloud spending; deleting user data/rewriting shared history; merging/releasing/Marketplace submission. A completed native smoke test is not production acceptance.
+
+Priority: issue #17 accessible archive-only/bridge-disable draft for NEXT explicit Apply, issue #16 auto-detect only local Windows LAN IP with manual persistence, genuine CI WELCOME handshake investigation. Separate uninstalled candidate JAR build/tests are allowed. Do not remove fail-closed INVALID checks, claim ACK is durable, or commit raw/proprietary captures.
+
+Each review checkpoint: exact base/head SHA, changed files, expected behavior, tests with exit codes and skips, CI runs, risk/rollback, Windows native verification versus pending, and requested decision. Routine failed tests -> diagnose and fix without involving owner. For material transport/session protocol or architecture changes, request ChatGPT review before integrating into shared candidate; never fabricate its signoff.
+
+
+## Current two-mode cloud-control rule (supersedes waiting-only/three-minute guidance)
+
+Owner direction: **two independent GitHub checks**. A lightweight supervisor (if actually running) polls the **private** A/B/C scope order at most **every 10 minutes while the agent is WORKING, IDLE, STOPPED, or WAITING_FOR_CHATGPT**. The agent reads a new directive when the controlled `revision` changes; GitHub text is never executed as code. This permits offline/local Agent C to remain aligned with cloud-issued ChatGPT scope changes **without switching local Qwen inference to a cloud provider**. An idle/stopped Codex process is not restarted by a watcher.
+
+**Review polling begins only when the agent has submitted an actual source-bound request and entered WAITING_FOR_CHATGPT**, identifying the exact repo/PR/full 40-digit SHA. First check after 5 minutes, then intervals of 10, 15, 30, 45 and 60 minutes (hourly maximum); a new request resets the sequence. No GitHub review checks while WORKING/IDLE/STOPPED. Scope-order checks continue every 10 minutes independently, including during the waiting state. The watcher may report a decision but cannot authenticate comment provenance or auto-approve/merge/install/deploy/trade.
+
+[Canonical private two-mode runbook and watcher](https://github.com/Helminiak/orderflow-entry-engine/blob/ops/abc-three-agent-coordination-20261009/handoff/AGENT_CLOUD_CONTROL_RUNBOOK.md). [A order](https://github.com/Helminiak/orderflow-entry-engine/blob/ops/abc-three-agent-coordination-20261009/coordination/agents/a.json), [B order](https://github.com/Helminiak/orderflow-entry-engine/blob/ops/abc-three-agent-coordination-20261009/coordination/agents/b.json), [C order](https://github.com/Helminiak/orderflow-entry-engine/blob/ops/abc-three-agent-coordination-20261009/coordination/agents/c.json).
+
+The owner reports A and B currently idle and C stopped. **On the next actual session**, read the private order before coding and adopt the appropriate state. Do not claim the supervisor/service is running unless it was installed and its status checked. Owner-only gates and exact ChatGPT review requirements remain unchanged.

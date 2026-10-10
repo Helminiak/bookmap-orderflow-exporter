@@ -212,25 +212,25 @@ class ExporterTest {
                 new InstrumentInfo("SYNTH", "CME", "TEST", .25, 1, "Synthetic", true),
                 api(settings),
                 null);
-        awaitBridgeReady(settings.bridgeHealthPort);
-        // Consume START before switching to LIVE, then stop ACKing to provoke LIVE overflow.
-        try (var context = new org.zeromq.ZContext()) {
-            var dealer = context.createSocket(org.zeromq.SocketType.DEALER);
-            dealer.setReceiveTimeOut(2000);
-            dealer.setLinger(0);
-            dealer.connect("tcp://127.0.0.1:" + settings.bridgePort);
-            dealer.send("HELLO overflow-test 0");
-            String welcome = dealer.recvStr(), start = dealer.recvStr();
-            assertNotNull(welcome, "WELCOME missing after observed health readiness");
-            assertNotNull(start, "START missing after observed health readiness");
-            assertTrue(welcome.contains("WELCOME"));
-            assertTrue(start.contains("\"seq\":1"));
-            dealer.send("ACK overflow-test 1");
-            exporter.onTimestamp(100);
-            exporter.onRealtimeStart();
-            for (int i = 0; i < 100; i++) exporter.send("x-" + i, true, 20000, 1);
+        try {
+            awaitBridgeReady(settings.bridgeHealthPort);
+            // Consume START, then stop ACKing to provoke LIVE overflow.
+            try (var context = new org.zeromq.ZContext();
+                    var peer = new SyntheticBridgePeer(context, settings.bridgePort,
+                            () -> BridgeHealthQuery.query("127.0.0.1", settings.bridgeHealthPort, 200))) {
+                peer.send("HELLO overflow-test 0");
+                String welcome = peer.receive("WELCOME"), first = peer.receive("START");
+                assertTrue(welcome.contains("WELCOME"));
+                assertTrue(first.contains("\"seq\":1"));
+                peer.send("ACK overflow-test 1");
+                exporter.onTimestamp(100);
+                exporter.onRealtimeStart();
+                for (int i = 0; i < 100; i++) exporter.send("x-" + i, true, 20000, 1);
+            }
+        } finally {
+            // A failed receive must not leak the synthetic writer/publisher into later tests.
+            exporter.stop();
         }
-        exporter.stop();
         Path summary =
                 Files.list(dir)
                         .filter(p -> p.toString().endsWith(".json"))

@@ -1,6 +1,14 @@
 # Agent A GitHub review index
 
-Latest: [v0.5a notice correction/source5f840f3](AGENT_A_NOTICE_LAYOUT_5f840f3_REVIEW.md), **READY FOR OWNER REVIEW; native PENDING; STOPPED; Agent B paused**. Exact-source Windows/Ubuntu push and PR CI pass. Later report commits are separate from artifact source.
+Latest new source: [shared WELCOME peer investigation](AGENT_A_WELCOME_SHARED_PEER_20261010.md), PR19 race branch; two Ubuntu failures are preserved across the synchronized stress and health-query fixtures. Test-only shared diagnostics and bounded scheduler-load regression pass locally; exact cause remains OPEN pending independent review. Earlier [matched comparison](AGENT_A_WELCOME_MATCHED_COMPARISON_20261010.md), [synchronized WELCOME diagnostics cdfe981](AGENT_A_WELCOME_SYNC_DIAGNOSTICS_CDfe981_REVIEW.md), [delivery-stage source617ed5a](AGENT_A_WELCOME_DELIVERY_STAGE_617ed5a_REVIEW.md), [diagnostic source59ca1e8](AGENT_A_WELCOME_DIAGNOSTICS_59ca1e8_REVIEW.md), and source83af7d48 recovery approval/delivery remain distinct checkpoints.
+
+Latest: [real production recovery integration/source83af7d4](AGENT_A_RECOVERY_INTEGRATION_83af7d4_REVIEW.md), PR19, exact-source APPROVED_FOR_DEVELOPMENT and UNINSTALLED Windows preview staged/hash verified.56 Java/15 Python local pass; exact-source Windows/Ubuntu CI PASS; native acceptance PENDING. Owner-controlled checklist included.
+
+Historical: [synthetic recovery controls/source303b6ca](AGENT_A_RECOVERY_CONTROLS_303b6ca_REVIEW.md), PR19, new source REVIEW PENDING CHATGPT; native integration unfinished. Helper33fcd9d approval is separate and preserved.
+
+Historical: [recovery draft/source33fcd9d](AGENT_A_RECOVERY_DRAFT_33fcd9d_REVIEW.md), draftPR19, REVIEW PENDING CHATGPT. This unreferenced foundation does not fix native recovery reachability; actual installed review JAR remains source5f840f3. Routine development policy is [here](AGENT_A_CHATGPT_REVIEW_POLICY.md).
+
+Historical: [v0.5a notice correction/source5f840f3](AGENT_A_NOTICE_LAYOUT_5f840f3_REVIEW.md), **READY FOR OWNER REVIEW; native PENDING; STOPPED; Agent B paused**. Exact-source Windows/Ubuntu push and PR CI pass. Later report commits are separate from artifact source.
 
 Historical: [receiver warning — exact source1405b76](AGENT_A_RECEIVER_WARNING_1405b76_REVIEW.md), **CHATGPT PRELIMINARY REVIEW RECEIVED at1405b76 — UI PARTIALLY APPROVED, native/release pending**, [draft PR15](https://github.com/Helminiak/bookmap-orderflow-exporter/pull/15). Native/production acceptance remains pending.
 

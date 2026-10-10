@@ -1,0 +1,43 @@
+# Agent A — bounded native bridge recovery first pass
+
+Owner local date2026-10-08; observations2026-10-09 03:47–03:51 UTC. Assigned branch `agent-a/native-bridge-recovery-20261009`, exact base `f790988ecc6da5f743cacfae7945ef462bd3824f`. Read README/AGENTS/handoff/architecture/decisions/risks, PR6/15/18 and issues16/17. This pass changes documentation only. No JAR build, replacement, activation, settings change, input, restart, merge or broker action. STOP after this handoff.
+
+## Verified access, mode and artifact
+
+- Ubuntu SSH authenticated successfully with existing pinned host identity and dedicated key; `whoami` succeeded. No credentials or host details published.
+- Desktop helper ping and window enumeration succeeded independently of SSH. Targeted capture correctly refused an obscured, nonforeground Bookmap dialog. Read-only whole-desktop capture succeeded and was inspected locally; contains live licensed market display and remains private.
+- Actual screenshot shows **Data: Live; Trading: Simulated**, enabled Orderflow addon and connected/RAM-ACK notice. Configuration is partially obscured by the setup terminal. This does not prove full UI/DPI acceptance or current capture completeness. No control input was sent.
+- Current Bookmap load-log tail identifies its latest exporter load as the same-named v0.5a JAR in Windows Downloads. That file hashes to `1f62776a44ffc5a6e368d3344932510b6416bd06bacf719477b58b15083a078e`, matching approved review artifact source `5f840f3a20c43865da5889ded97b90cce1a883b4`. This is log/path/disk identity evidence, not an in-process byte attestation. Later documentation head is not a newly validated JAR.
+- SSH command/desktop helper are management tools, independent of market/health publisher ports. No firewall/service changes were made.
+
+## Issue17 minimal recovery UX proposal — not implemented
+
+Source: `BookmapOrderflowExporter.java` bridge checkbox around682 and explicit Apply listener around737–760; `BridgeOperatorNotice.java` heading/details and HostLayout. The existing checkbox is inside scrollable fields and the Apply action alone transfers selection to Settings and reloads. Native difficulty's precise cause remains unproved.
+
+Propose a compact **Archive only on next Apply** action beside explicit bridge state/pending state. It sets a shared *unsaved draft* bridge choice false and mirrors the existing checkbox; it does not touch runtime bridge, persistent settings or API. Normal checkbox changes update the same draft and can reverse the selection. Display: “Pending: bridge disabled on next Apply. Current session is unchanged.” Preserve MBO/trade journal choices and all network fields. Existing explicit Apply saves all draft settings and starts a new session; keep its restart warning. INVALID remains INVALID and missing receiver data is never represented as repaired.
+
+Always-visible placement needs actual Bookmap host validation: BorderLayout NORTH alone is **not sticky** when the ancestor page scrolls. Prototype a viewport-constrained recovery action strip outside scrolling details/settings with proper layout/minimum size, without displacing critical status or inaccessible tabs/Apply. Verify native host integration before adopting any scrolling change. Add a named, focusable button, mnemonic and documented panel/window keyboard action; do not bind a trading hotkey or trigger hidden reload. Native evidence must prove visible action bounds after scroll and keyboard operation under long notices, narrow width and100/125/150%DPI. Until that test passes, “always visible” remains a requirement, not an achievement.
+
+Information runbook proposal: INVALID is not healed by feed reset. For a fresh bridged session, start the receiver first then explicitly Apply in a safe window. For archive-only, select the recovery draft and explicitly Apply safely. Pending selection does not affect active capture.
+
+## Issue16 LAN detection proposal — not implemented
+
+Use dependency-injected `NetworkInterface`/`Inet4Address` enumeration of local active nonloopback interfaces. Discovery off EDT, bounded result publication on EDT; no shell, traffic, scan, filesystem or callbacks. Filter loopback/link-local/down addresses; distinguish likely LAN candidates from VPN/VM metadata without claiming name heuristics are authoritative. If there is exactly one suitable candidate offer it; with multiple candidates show adapter/address selection. Do not infer default-route preference from enumeration order, or silently pick Wi-Fi/Ethernet/VPN. JDK interface metadata does not reliably identify the default route, so ambiguous cases require user selection.
+
+Add explicit auto/manual intent for *new* configuration. Existing persisted values, including deliberate/factory indistinguishable0.0.0.0, migrate as preserved/manual; never silently rewrite them. Detect/Refresh offers suggestions until the user chooses; Manual override and0.0.0.0 remain supported. Validate a nonwildcard selected bind belongs to the Windows host before explicit Apply; never use receiver IP as publisher bind. Interface changes produce actionable validation, not automatic restart. Bridge remains disabled by default. Tests: single/multiple/private/VPN/VM/down/IPv6-only/loopback/link-local/renumbered, old wildcard/manual persistence, ambiguity/no address and nonlocal address; refresh/opening performs no save/reload.
+
+## Ubuntu CI failure — independent investigation
+
+Artifact source5f840f3 push/PR matrices passed previously. Later **documentation-only** headf790988 push run37871579632 passed, but [PR run37871584584](https://github.com/Helminiak/bookmap-orderflow-exporter/actions/runs/37871584584) failed Ubuntu `terminalAckWithinRetentionBudgetCompletesSession`, line32: WELCOME was null. Diagnostic state was WAITING_RECEIVER, receiver none, queued START+STOP, zero publications/overflows/send failures. The health-readiness assertion had already passed. Thus this failure is **after readiness**, not the earlier rebind test's missing startup observation. No Windows management service state can explain this isolated loopback CI failure.
+
+Source review: terminal test connects a DEALER then immediately sends HELLO with2s receive timeout, without checking send outcome/connection event; publisher ROUTER polls DONTWAIT. Health readiness proves REP answers, not receiver connection completion. Transport handshake/scheduling/identity/send timing or fixture port races remain hypotheses, not diagnosed causes. Existing code avoids equal market/health ports in this test. Do not add blind retries, extend timeouts without evidence or suppress assertions. Next bounded investigation should record connect/send/receive events and publisher health around a **single** handshake, retaining all delivery/ACK assertions, before changing protocol or production code.
+
+One focused local command, JDK17/Gradle8.10 `test --tests com.limacharlie.orderflow.BridgeHealthQueryTest`, passed all6 tests at exact basef790988. This one pass does not resolve intermittent failure. Full suites are not rerun for this documentation-only pass; no executable source changed. New documentation-head CI is separately recorded by its workflow; passing code-source CI is not rewritten as universal reliability.
+
+## Local Qwen C bounded work queue
+
+[Exact-base task queued on issue17](https://github.com/Helminiak/bookmap-orderflow-exporter/issues/17#issuecomment-6073884481): proposed `BridgeRecoveryDraft.java` and `BridgeRecoveryDraftTest.java`, independent draft-only selection/pending model, no Settings/API/transport dependencies, baseline/idempotence/reversibility/negative mutation tests. Expected unified patch plus test report; no integration/install authorization. Cloud Agent A created no production implementation. Queueing is not worker execution or accepted output; Qwen C delivery pending. Integrator must independently decide whether the abstraction is justified.
+
+## Handoff / next action
+
+Changed files: this report, master handoff and risk register. Source/installed-review artifact remains5f840f3; working basef790988, final documentation commit resolved externally by Git. Actual production code/defaults and PR6/15/18 unchanged. Open limitations: obscured configuration capture, physical DPI/recovery geometry unmeasured, intermittent CI handshake failure unresolved, auto/manual migration and native action-strip design unimplemented. Next: local Qwen C produce the queued bounded model/test patch; Agent A independently review and qualify a native recovery prototype only under the owner's next scoped instruction. No replacement JAR or restart without discrete authorization. **STOPPED after this pass.**
