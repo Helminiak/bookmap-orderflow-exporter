@@ -61,7 +61,7 @@ import javax.swing.SwingUtilities;
  * <p>This module intentionally performs no trading and no feature engineering.
  */
 @Layer1SimpleAttachable
-@Layer1StrategyName("Orderflow Raw Exporter v0.5a")
+@Layer1StrategyName("Orderflow Raw Exporter v0.5b")
 @Layer1ApiVersion(Layer1ApiVersionValue.VERSION2)
 public class BookmapOrderflowExporter
         implements CustomModule,
@@ -132,9 +132,11 @@ public class BookmapOrderflowExporter
     private double pips;
     private double multiplier;
     private volatile long marketNs = 0L;
-    private long sequence = 0L;
-    private long firstMarketNs = Long.MIN_VALUE;
-    private long lastMarketNs = Long.MIN_VALUE;
+    // R-03: written by Bookmap callbacks, read from UI/status and shutdown threads —
+    // volatile pins the JMM visibility contract (final-field publication covers events only).
+    private volatile long sequence = 0L;
+    private volatile long firstMarketNs = Long.MIN_VALUE;
+    private volatile long lastMarketNs = Long.MIN_VALUE;
     private volatile boolean realtimePhase = false;
     private final Object lifecycleLock = new Object();
     private volatile boolean stopped = false;
@@ -795,7 +797,7 @@ public class BookmapOrderflowExporter
     private static JPanel buildInformationPanel() {
         JPanel information = new JPanel(new BorderLayout());
         JPanel content = new JPanel(new BorderLayout(4, 8));
-        JLabel title = new JLabel("<html>Orderflow Raw Exporter<br>v0.5a — preview build</html>");
+        JLabel title = new JLabel("<html>Orderflow Raw Exporter<br>v0.5b — preview build</html>");
         title.putClientProperty("orderflow.navigation", true);
         content.add(title, BorderLayout.NORTH);
         javax.swing.JTextArea description = new javax.swing.JTextArea(

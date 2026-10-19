@@ -145,13 +145,26 @@ public final class LiveBridge implements AutoCloseable {
         return depth.get();
     }
 
-    private static String quote(String value) {
-        return "\""
-                + value.replace("\\", "\\\\")
-                        .replace("\"", "\\\"")
-                        .replace("\n", "\\n")
-                        .replace("\r", "\\r")
-                + "\"";
+    // Package-private for regression tests (R-12: quote must escape every C0 control).
+    static String quote(String value) {
+        StringBuilder b = new StringBuilder(value.length() + 8).append('"');
+        for (int i = 0; i < value.length(); i++) {
+            char c = value.charAt(i);
+            switch (c) {
+                case '\\' -> b.append("\\\\");
+                case '"' -> b.append("\\\"");
+                case '\n' -> b.append("\\n");
+                case '\r' -> b.append("\\r");
+                case '\t' -> b.append("\\t");
+                case '\b' -> b.append("\\b");
+                case '\f' -> b.append("\\f");
+                default -> {
+                    if (c < 0x20) b.append(String.format("\\u%04x", (int) c));
+                    else b.append(c);
+                }
+            }
+        }
+        return b.append('"').toString();
     }
 
     public String display() {
@@ -271,10 +284,21 @@ public final class LiveBridge implements AutoCloseable {
                     boolean malformed = data.hasReceiveMore();
                     while (data.hasReceiveMore()) data.recv();
                     String[] fields = command.split(" ");
+                    // R-12: a non-numeric third field is a malformed command, not a publisher
+                    // failure. Ignore it instead of letting NumberFormatException reach the
+                    // worker catch-all and invalidate the bridge.
+                    long ack = 0;
+                    boolean numericAck = false;
+                    if (fields.length == 3) {
+                        try {
+                            ack = Long.parseLong(fields[2]);
+                            numericAck = true;
+                        } catch (NumberFormatException ignored) {
+                        }
+                    }
                     if (!malformed
-                            && fields.length == 3
+                            && numericAck
                             && (fields[0].equals("HELLO") || fields[0].equals("ACK"))) {
-                        long ack = Long.parseLong(fields[2]);
                         if (owner != null && !owner.equals(fields[1]))
                             invalidate("receiver restarted; fresh exporter START required");
                         else if (ack < acknowledged || ack > lastSeq)
@@ -300,6 +324,7 @@ public final class LiveBridge implements AutoCloseable {
                                             data,
                                             id,
                                             "{\"type\":\"WELCOME\",\"health\":" + status() + "}")) {
+                                        sendFailures++;
                                         identity = null;
                                         state = "DISCONNECTED";
                                     } else {
@@ -362,12 +387,13 @@ public final class LiveBridge implements AutoCloseable {
         }
     }
 
+    // R-12: send() reports failure without touching counters; every caller increments
+    // sendFailures exactly once, so an exception and a normal false are counted identically.
     private boolean send(ZMQ.Socket socket, byte[] identity, String body) {
         try {
             return socket.send(identity, ZMQ.SNDMORE | ZMQ.DONTWAIT)
-                    && socket.send(body, ZMQ.DONTWAIT);
+                    && socket.send(body.getBytes(StandardCharsets.UTF_8), ZMQ.DONTWAIT);
         } catch (RuntimeException failure) {
-            sendFailures++;
             return false;
         }
     }
