@@ -1,0 +1,68 @@
+# Bookmap Exporter — JAR Version & Acceptance Ledger
+
+**Purpose:** One permanent, source-tied record for EVERY distinct JAR candidate deployed or evaluated on Windows Bookmap. Sol reviews code and visual/function evidence, returns specific rework to Qwen, approves accepted engineering candidates, and maintains exact rollback targets. This is the canonical index; the working test and defect details reside in linked GitHub issue/PR comments.
+
+**Scope:** Engineering acceptance for owner-authorized Rithmic simulated live-data and BMF replay. Sol acceptance is **not** owner production release/marketplace approval; it does not authorize orders or funded-account use. Only an owner can authorize those separately.
+
+## Versioning invariant
+
+- Assign a unique test-candidate ID before staging, e.g. `BM-JAR-20261019-001`; increase monotonically for **each different JAR SHA-256**, even when the source SHA is unchanged. Never overwrite a previous JAR or silently reuse an ID.
+- Exact **Git source commit SHA, source branch, working-tree cleanliness/diff hash, JDK/Gradle/toolchain, build outputs, full JAR SHA-256, unique artifact filename**, and the specific Bookmap install/load/run identity are recorded. A filename, tag, `git rev-parse HEAD`, or CI success alone cannot establish the loaded JAR.
+- Keep immutable original candidate JARs **locally**, with a second trusted backup where practical; record a sanitized retrieval locator/backup verification and SHA-256. Do not commit binary JARs, private machine paths, licensed BMF feeds or raw screenshots to public GitHub without explicit approval.
+- Every candidate has its **own GitHub issue/PR checkpoint** identified by unique marker/URL. Creation/staging and final review are separate checkpoints or edits linked from this ledger. GitHub commits preserve revision history; never delete a failed candidate or rewrite its outcome.
+- A rollback target must be **independently installed/known-good** or the prior **no-exporter clean baseline**; source code alone is not a working rollback artifact.
+
+## Sol review and rework contract
+
+1. **PRE-BUILD / PRE-DEPLOY REVIEW:** Qwen presents the exact diff, intended behavior and tests. Sol inspects correctness, lifecycle/data safety, GUI usability, typography/layout design, configuration and error-message behavior. Mark `REWORK_REQUIRED` with **exact numbered defects and acceptance tests**, or `REVIEWED_FOR_SIM_NATIVE_TEST` when acceptable to deploy in the authorized simulation environment. Static inspection cannot approve actual runtime visual appearance.
+2. **BUILD & STAGE:** Qwen runs clean tests/packaging, builds uniquely named JAR, verifies SHA-256 on Linux and Windows, and posts candidate record in GitHub **before native install**.
+3. **NATIVE FUNCTIONAL + VISUAL REVIEW:** Automated Windows helper performs real Bookmap JAR load/configure/Apply/disable/unload, ALL discovered safe exporter controls in static/active/error states, bridge connect/disconnect/reconnect, live simulated archive validation and >100 MiB BMF replay as applicable. Sol compares BEFORE/AFTER screenshots, logs, records and expected behavior. `BUILD_PASS` is **not** `NATIVE_ACCEPTED`.
+4. **REWORK:** Sol issues a narrowly scoped, evidence-linked Qwen correction to one defect, with severity, reproduction steps, screenshot/hash refs, affected file/test, expected result, and required RED/GREEN test. Each rebuilt JAR becomes a **NEW CANDIDATE ID**; no in-place mutation of the preceding artifact.
+5. **PROMOTION:** Only after tests/evidence for the defined gate pass may Sol label `ENGINEERING_ACCEPTED_SIM_LIVE`, `ENGINEERING_ACCEPTED_BMF`, and optionally `ENGINEERING_ACCEPTED_BRIDGE` individually. `CURRENT_KNOWN_GOOD` only after live acceptance and clean restart/rollback evidence; full end-to-end acceptance requires live+replay+UI+transport where included. Production/release status remains `OWNER_HOLD` unless separately approved.
+6. **ROLLBACK:** On native regression or failure, preserve failure evidence, gracefully stop/unload only the candidate exporter, restore the recorded last verified JAR and its settings or restore the clean no-exporter baseline, verify actual Bookmap load/config and one safe smoke, then register `ROLLED_BACK_TO` with exact ID/SHA and reason. Never infer success from staging a prior JAR.
+
+**Required statuses:** `DRAFT`, `REWORK_REQUIRED`, `REVIEWED_FOR_SIM_NATIVE_TEST`, `BUILD_FAILED`, `STAGED_HASH_VERIFIED`, `NATIVE_TESTING`, `NATIVE_REJECTED`, `ENGINEERING_ACCEPTED_SIM_LIVE`, `ENGINEERING_ACCEPTED_BMF`, `ENGINEERING_ACCEPTED_BRIDGE`, `CURRENT_KNOWN_GOOD`, `ROLLED_BACK`, `SUPERSEDED`. Statuses can be combined for individual live/BMF/bridge gates but do not silently upgrade a partially tested candidate.
+
+## Current register (evidence-only; historical snapshots are not live verification)
+
+| Candidate | Source SHA / JAR SHA256 | Evidence | Status | Rollback |
+|---|---|---|---|---|
+| Historical accepted v0.4 recorder | Source and JAR hash: see [v0.4 validation](2026-10-08-v0.4-runtime-validation.md) | Native 786,347-event capture accepted for v0.4 scope | `HISTORICAL_VALIDATION` (not proof currently loaded) | Original artifact must be located/hashed before selecting as rollback |
+| 2026-10-18 preflight: no exporter loaded | N/A; exact no-exporter Bookmap state in [DR100 checkpoint](https://github.com/Helminiak/dr100-engineering-control/issues/18#issuecomment-6259506438) | Simulated ESZ6 account, no exporter JAR found in inspected Bookmap tree | `CLEAN_BASELINE` (verify current state before any new changes) | Unload candidate; restore current no-exporter state; preserve third-party modules |
+| Recovery preview `83af7d4` (historical) | Source `83af7d48d6c53f4c0a50f7eb440e13653878e7e0`; JAR `56d20468607e02811ca0f9278890793e2a2a78b19939d4f0e852808403a7d0cc` | [PR #19](https://github.com/Helminiak/bookmap-orderflow-exporter/pull/19); earlier Windows staging and later owner UI report, no current loaded proof | `HISTORICAL_STAGED`, native acceptance unresolved | Do not use as last-known-good without independent load acceptance |
+
+**No new October 19 JAR build/deployment is claimed by this ledger.** The first automated build/deployment creates candidate `BM-JAR-20261019-001` only after the worker verifies its unique run ID is unused; if dates change, choose the correct date/sequence. Add one row PER attempted JAR, even failed ones. Do not fill statuses from intention.
+
+## Required per-candidate record (copy into GitHub issue/PR as one linked checkpoint)
+
+    MARKER: BM-JAR-YYYYMMDD-NNN
+    CANDIDATE ID / PARENT ID / WHY NEW VERSION:
+    SOURCE REPO, BRANCH, FULL SHA / DIFF STATUS / PATCH HASH:
+    JDK / GRADLE / JAVA+PYTHON TEST COMMANDS, EXITS, COUNTS:
+    BUILD MANIFEST / PACKAGED RUNTIME / JAR FILENAME / SHA256:
+    STAGED WINDOWS SHA256 / IMMUTABLE ARTIFACT LOCATOR:
+    VERIFIED PREVIOUS INSTALLED JAR OR NO-EXPORTER BASELINE:
+    PRE-DEPLOY SOL REVIEW: ACCEPTABLE_FOR_SIM_TEST or REWORK_REQUIRED; comment URL:
+    BOOKMAP APP VERSION / TARGET SIM ACCOUNT EVIDENCE / INSTRUMENT:
+    ACTUAL LOADED JAR IDENTITY PROOF / GUI BEFORE-AFTER CAPTURE HASHES:
+    CONFIG/UI MATRIX: [control, state, expected, observed, verdict, evidence]:
+    VISUAL REVIEW: quiet / live-active / connected / warning-invalid / replay:
+    BRIDGE RECEIVER CONNECT-DISCONNECT-RECONNECT / UPSTREAM SEPARATE:
+    LIVE SIM ARCHIVE / SUMMARY / VALIDATOR / CLEAN STOP:
+    BMF INPUT >104857600 bytes / replay actions / repeated normalized extraction:
+    DEFECTS (severity, repro, screenshots/logs) / SOL REWORK INSTRUCTION:
+    REBUILD NEW CANDIDATE ID / RED-GREEN / FINAL NATIVE RETEST:
+    FINAL SOL ENGINEERING VERDICT: SIM_LIVE / BMF / BRIDGE (separate):
+    OWNER PRODUCTION/RELEASE APPROVAL: HOLD unless explicitly changed:
+    LAST KNOWN GOOD ID / SHA, EXACT ROLLBACK OPERATION AND READBACK:
+    GITHUB SOURCE COMMIT / ISSUE OR PR COMMENT URL VERIFIED BY READBACK:
+
+## Routine automation and safety
+
+- Existing Sol+single Qwen; existing SSH/native Windows helper; Hermes learning queue remains paused. No autonomous queue of model workers or new control infrastructure.
+- Record every candidate's key identity **before** testing and its true result **after** testing; one concise checkpoint per material JAR candidate, not per screenshot/click. Preserve review and failed candidates for traceable regression analysis.
+- A model cannot certify visual behavior from source alone: require actual Windows Bookmap screenshot and effect in static and active modes before the visual verdict.
+- Do not claim all buttons tested without a version-bound control inventory; unsupported or hazardous controls must be documented as `SKIPPED` / `BLOCKED` with why.
+- After two noninformative attempts or roughly ten minutes stalled, use owner assistance/stop-loss policy rather than repeatedly editing the same cosmetic behavior.
+
+**Task-level acceptance and scenario details:** [DR100 Automated E2E v2](https://github.com/Helminiak/dr100-engineering-control/blob/main/docs/handoff/2026-10-19_BOOKMAP_AUTOMATED_E2E_ACCEPTANCE_V2.md).
