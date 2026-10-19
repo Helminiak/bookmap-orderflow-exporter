@@ -25,10 +25,15 @@ import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
+import java.nio.channels.Channels;
+import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
+import java.nio.file.StandardOpenOption;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
@@ -61,7 +66,7 @@ import javax.swing.SwingUtilities;
  * <p>This module intentionally performs no trading and no feature engineering.
  */
 @Layer1SimpleAttachable
-@Layer1StrategyName("Orderflow Raw Exporter v0.5b")
+@Layer1StrategyName("Orderflow Raw Exporter v0.5c")
 @Layer1ApiVersion(Layer1ApiVersionValue.VERSION2)
 public class BookmapOrderflowExporter
         implements CustomModule,
@@ -108,12 +113,35 @@ public class BookmapOrderflowExporter
     @FunctionalInterface
     interface JournalOutputFactory {
         OutputStream open(Path path) throws IOException;
+
+        /**
+         * Forces bytes already handed to the operating system into durable storage, when the
+         * implementation can. The default no-op keeps test fakes simple; production forces its
+         * FileChannel so a crash cannot leave OS-cache-only data behind a renamed archive (R-07).
+         */
+        default void sync(OutputStream out) throws IOException {}
     }
 
     private final JournalOutputFactory journalOutputFactory;
 
     public BookmapOrderflowExporter() {
-        this(Files::newOutputStream);
+        this(new JournalOutputFactory() {
+            private FileChannel archiveChannel;
+
+            @Override
+            public OutputStream open(Path path) throws IOException {
+                archiveChannel =
+                        FileChannel.open(path, StandardOpenOption.CREATE, StandardOpenOption.WRITE);
+                return Channels.newOutputStream(archiveChannel);
+            }
+
+            @Override
+            public void sync(OutputStream out) throws IOException {
+                if (archiveChannel != null && archiveChannel.isOpen()) {
+                    archiveChannel.force(false);
+                }
+            }
+        });
     }
 
     // Worker I/O boundary allows deterministic disk-error tests without changing runtime defaults.
@@ -123,6 +151,10 @@ public class BookmapOrderflowExporter
 
     private final Map<String, OrderState> orders = new HashMap<>();
     private final AtomicReference<Throwable> writerError = new AtomicReference<>();
+    // R-07: true only after the .partial archive was fsynced and atomically renamed to its final
+    // name with matching counts. A crash or failed stop leaves the .partial file in place instead
+    // of a truncated file wearing the final name.
+    private final AtomicBoolean archiveFinalized = new AtomicBoolean();
     private final AtomicBoolean statusUpdateScheduled = new AtomicBoolean();
 
     private Api api;
@@ -797,7 +829,7 @@ public class BookmapOrderflowExporter
     private static JPanel buildInformationPanel() {
         JPanel information = new JPanel(new BorderLayout());
         JPanel content = new JPanel(new BorderLayout(4, 8));
-        JLabel title = new JLabel("<html>Orderflow Raw Exporter<br>v0.5b — preview build</html>");
+        JLabel title = new JLabel("<html>Orderflow Raw Exporter<br>v0.5c — preview build</html>");
         title.putClientProperty("orderflow.navigation", true);
         content.add(title, BorderLayout.NORTH);
         javax.swing.JTextArea description = new javax.swing.JTextArea(
@@ -1027,9 +1059,15 @@ public class BookmapOrderflowExporter
                                     TimeUnit.MILLISECONDS.toNanos(effectiveFlushIntervalMs);
                             long nextCheckpointNs = System.nanoTime() + checkpointIntervalNs;
 
+                            // R-07: stage as .partial; only a clean, count-matched close renames it
+                            // to the final archive name. A crash leaves an explicit incomplete file
+                            // instead of a truncated gzip wearing the final name.
+                            Path partialFile =
+                                    eventFile.resolveSibling(
+                                            eventFile.getFileName().toString() + ".partial");
                             try (CountingOutputStream countedFile =
                                             new CountingOutputStream(
-                                                    journalOutputFactory.open(eventFile));
+                                                    journalOutputFactory.open(partialFile));
                                     BufferedOutputStream bufferedFile =
                                             new BufferedOutputStream(countedFile, IO_BUFFER_BYTES);
                                     GZIPOutputStream gzip =
@@ -1089,10 +1127,38 @@ public class BookmapOrderflowExporter
                                 approxUnflushedBytes = 0L;
                                 lastFlushEpochMs = System.currentTimeMillis();
                                 scheduleStatusRefresh(true);
+                                // R-07: force durable storage before the streams close, so a crash
+                                // after rename cannot lose data that was only in OS cache.
+                                journalOutputFactory.sync(countedFile);
                             } catch (Throwable t) {
                                 writerError.compareAndSet(null, t);
                                 uiMessage = "Writer failed";
                                 scheduleStatusRefresh(true);
+                            }
+                            // R-07: finalize only when the write completed cleanly and every
+                            // allocated sequence was persisted; otherwise keep .partial as evidence.
+                            if (writerError.get() == null && recordsPersisted == sequence) {
+                                try {
+                                    try {
+                                        Files.move(
+                                                partialFile,
+                                                eventFile,
+                                                StandardCopyOption.ATOMIC_MOVE);
+                                    } catch (AtomicMoveNotSupportedException e) {
+                                        Files.move(
+                                                partialFile,
+                                                eventFile,
+                                                StandardCopyOption.REPLACE_EXISTING);
+                                    }
+                                    archiveFinalized.set(true);
+                                } catch (IOException moveFailure) {
+                                    writerError.compareAndSet(
+                                            null,
+                                            new IllegalStateException(
+                                                    "Archive finalization failed; partial file retained: "
+                                                            + partialFile.getFileName(),
+                                                    moveFailure));
+                                }
                             }
                         },
                         "bookmap-orderflow-writer");
@@ -1288,6 +1354,7 @@ public class BookmapOrderflowExporter
         rawNumberField(b, "pips", Double.toString(pips)).append(',');
         rawNumberField(b, "multiplier", Double.toString(multiplier)).append(',');
         field(b, "event_file", eventFile.getFileName().toString()).append(',');
+        booleanField(b, "archive_finalized", archiveFinalized.get()).append(',');
         booleanField(b, "writer_ok", valid).append(',');
         nullableStringField(b, "writer_error", error == null ? null : error.toString()).append(',');
         numberField(b, "total_records", recordsPersisted).append(',');

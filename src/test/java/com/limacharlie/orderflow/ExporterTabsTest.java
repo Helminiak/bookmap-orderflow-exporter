@@ -51,7 +51,11 @@ class ExporterTabsTest {
                         assertNotNull(
                                 find(config, JButton.class, "Apply settings / restart exporter"));
                         var info = (Container) tabs.getComponentAt(2);
-                        assertTrue(find(info, JLabel.class, null).getText().contains("v0.5a"));
+                        assertTrue(
+                                find(info, JLabel.class, null)
+                                        .getText()
+                                        .matches("(?s).*Orderflow Raw Exporter.*v\\d+\\.\\d+[a-z].*"),
+                                "information tab must show the build identity");
                         assertNotNull(find(info, JButton.class, "Installation / help"));
                         var statusScroll =
                                 find((Container) tabs.getComponentAt(1), JScrollPane.class, null);
