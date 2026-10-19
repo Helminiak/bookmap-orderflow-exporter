@@ -42,8 +42,8 @@ jar {
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     from { configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) } }
     exclude 'META-INF/*.SF', 'META-INF/*.RSA', 'META-INF/*.DSA'
-    archiveFileName = 'bookmap-orderflow-exporter-v0.5c.jar'
-    manifest { attributes 'Implementation-Version': project.version, 'Orderflow-Build-Revision': '0.5c', 'Orderflow-Source-Revision': sourceRevision.get(), 'Orderflow-Working-Tree-Dirty': workingTreeDirty.get() }
+    archiveFileName = 'bookmap-orderflow-exporter-v0.5d.jar'
+    manifest { attributes 'Implementation-Version': project.version, 'Orderflow-Build-Revision': '0.5d', 'Orderflow-Source-Revision': sourceRevision.get(), 'Orderflow-Working-Tree-Dirty': workingTreeDirty.get() }
 }
 
 test { useJUnitPlatform() }

@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.5d strict-historical writer-stall bound (R-02) — 2026-10-19 (candidate, DEVELOPMENT_TEST_ONLY)
+
+- Strict historical enqueue no longer blocks Bookmap's callback thread forever when the writer stalls: a sliding deadline fails the export explicitly after `WRITER_STALL_TIMEOUT_SECONDS` (30s production default) of zero journal progress. The deadline advances with every persisted record, so a slow but progressing disk never trips it; a dead/stalled writer now surfaces as an explicit invalid-export failure instead of hanging the callback — and, because send() holds lifecycleLock while enqueuing, instead of also deadlocking stop().
+- Regression `WriterStallTest` reproduces the defect on v0.5c (callback thread parked indefinitely holding lifecycleLock) and passes on this candidate; full suite 34 Java / 15 Python green.
+- No protocol, schema, default or UI change. LIVE responsive mode unchanged. Candidate remains DEVELOPMENT_TEST_ONLY pending Sol's independent review and native Bookmap replay acceptance.
+
 ## v0.5a UI preview — 2026-10-08
 
 - Scroll the entire Configuration page with Bookmap's outer scrollbar, including Apply at the bottom; remove the nested settings viewport.

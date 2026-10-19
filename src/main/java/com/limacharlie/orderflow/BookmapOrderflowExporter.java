@@ -81,6 +81,9 @@ public class BookmapOrderflowExporter
     private static final int DEFAULT_QUEUE_CAPACITY = 1_000_000;
     private static final int MIN_QUEUE_CAPACITY = 10_000;
     private static final int MAX_QUEUE_CAPACITY = 5_000_000;
+    // R-02: strict historical enqueue fails explicitly after this much zero-progress time instead
+    // of blocking Bookmap's callback thread (and lifecycleLock) forever on a stalled writer.
+    private static final int WRITER_STALL_TIMEOUT_SECONDS = 30;
     private static final int DEFAULT_FLUSH_INTERVAL_MS = 60_000;
     private static final int MIN_FLUSH_INTERVAL_MS = 5_000;
     private static final int MAX_FLUSH_INTERVAL_MS = 300_000;
@@ -199,6 +202,8 @@ public class BookmapOrderflowExporter
     private Thread writerThread;
     private int effectiveQueueCapacity = DEFAULT_QUEUE_CAPACITY;
     private int effectiveFlushIntervalMs = DEFAULT_FLUSH_INTERVAL_MS;
+    // Package-private so regression tests can shorten the bound; production default is 30s of zero progress.
+    int writerStallTimeoutSeconds = WRITER_STALL_TIMEOUT_SECONDS;
     private volatile long recordsPersisted = 0L;
     private volatile long approxUnflushedBytes = 0L;
     private volatile long diskBytesWritten = 0L;
@@ -1228,10 +1233,31 @@ public class BookmapOrderflowExporter
             }
         } else {
             try {
+                // R-02: bound the historical wait. A writer that makes no journal progress for the
+                // stall window (hung disk, dead thread) fails the export explicitly instead of
+                // blocking Bookmap's callback thread — and lifecycleLock — forever. The deadline
+                // slides with every persisted record, so a slow but progressing disk never trips it.
+                long lastProgress = recordsPersisted;
+                long stallDeadlineNs =
+                        System.nanoTime() + TimeUnit.SECONDS.toNanos(writerStallTimeoutSeconds);
                 while (!queue.offer(event)) {
                     if (writerError.get() != null)
                         throw new IllegalStateException("Writer failed", writerError.get());
                     if (Thread.interrupted()) throw new InterruptedException();
+                    long progress = recordsPersisted;
+                    if (progress != lastProgress) {
+                        lastProgress = progress;
+                        stallDeadlineNs =
+                                System.nanoTime() + TimeUnit.SECONDS.toNanos(writerStallTimeoutSeconds);
+                    } else if (System.nanoTime() >= stallDeadlineNs) {
+                        var stall =
+                                new IllegalStateException(
+                                        "Writer stalled: no journal progress for "
+                                                + writerStallTimeoutSeconds
+                                                + "s; export aborted");
+                        writerError.compareAndSet(null, stall);
+                        throw new IllegalStateException("Writer stalled", stall);
+                    }
                     java.util.concurrent.locks.LockSupport.parkNanos(100_000L);
                 }
             } catch (InterruptedException e) {
