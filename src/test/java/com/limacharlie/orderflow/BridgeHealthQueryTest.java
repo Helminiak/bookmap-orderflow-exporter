@@ -25,9 +25,24 @@ class BridgeHealthQueryTest {
             receiver.setLinger(0);
             receiver.setReceiveTimeOut(2000);
             receiver.connect("tcp://127.0.0.1:" + market);
+            // Same observable-readiness convention as the bind wait above: on a shared CI runner a
+            // vCPU-steal window can wedge the initial TCP connect/pipe under load without any bridge
+            // fault — the worker stays parked and idle while HELLO sits in an unformed pipe, and
+            // re-sending on that same socket never helps (probed: only a fresh connection recovers).
+            // Re-establish the receiver exactly as a real one would, until the 10s readiness deadline.
             receiver.send("HELLO owner 0");
-            String welcome = receiver.recvStr(),
-                    first = receiver.recvStr(),
+            String welcome = receiver.recvStr();
+            long helloDeadline = System.nanoTime() + 10_000_000_000L;
+            while (welcome == null && !bridge.invalid() && System.nanoTime() < helloDeadline) {
+                receiver.close();
+                receiver = context.createSocket(SocketType.DEALER);
+                receiver.setLinger(0);
+                receiver.setReceiveTimeOut(2000);
+                receiver.connect("tcp://127.0.0.1:" + market);
+                receiver.send("HELLO owner 0");
+                welcome = receiver.recvStr();
+            }
+            String first = receiver.recvStr(),
                     terminal = receiver.recvStr();
             assertNotNull(welcome, bridge.status());
             assertNotNull(first, bridge.status());

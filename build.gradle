@@ -55,7 +55,7 @@ tasks.register('writeFixtureClasspath') {
 
 tasks.register('smokeTestBundle', Zip) {
     dependsOn jar
-    archiveFileName = 'orderflow-v0.5a-windows-smoke-test.zip'
+    archiveFileName = 'orderflow-v0.5d-windows-smoke-test.zip'
     destinationDirectory = layout.buildDirectory.dir('distributions')
     from(tasks.jar)
     from('tools/windows') { exclude '*Tests.ps1' }
