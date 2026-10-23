@@ -68,6 +68,18 @@ jobs:
         shell: powershell
         run: ./tools/windows/Smoke-Test.Tests.ps1
 
+      - name: Render synthetic notice viewports
+        run: gradle --no-daemon renderNoticePreview
+
+      - name: Upload notice layout evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: notice-layout-evidence-${{ matrix.os }}
+          path: |
+            build/notice-previews/*.png
+            build/test-results/test/*.xml
+          if-no-files-found: error
+
       - name: Upload smoke-test bundle
         uses: actions/upload-artifact@v4
         with:

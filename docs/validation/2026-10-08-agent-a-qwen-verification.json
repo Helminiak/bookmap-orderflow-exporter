@@ -1,0 +1,22 @@
+{
+  "model": "qwen/qwen3.8-27b",
+  "format": "GGUF Q4_K_M",
+  "request_duration_seconds": 36.3,
+  "request_exit": 0,
+  "prompt_sha256": "6d71111fb7c448772f230ea0f8688123f43a364a1f54e0bc72353379ad3f2788",
+  "usage": {
+    "prompt_tokens": 244,
+    "completion_tokens": 3190,
+    "total_tokens": 3434,
+    "reasoning_tokens": 2759
+  },
+  "gpu": "NVIDIA GeForce RTX 5090",
+  "cuda_worker_memory_mib": 18462,
+  "during_request_gpu_utilization_percent_samples": [
+    98,
+    95
+  ],
+  "runtime": "llama.cpp CUDA12 2.54.0",
+  "evidence": "Local LM Studio loopback listener; local CUDA worker visible on GPU during request; lms ps model loaded. GPU participation verified, full-layer offload and exclusive utilization not certified.",
+  "disposition": "Used failure cases; rejected incorrect proposal that HELLO alone must not be labeled connected. UI separates handshaken/awaiting ACK from RAM ACK checkpoint. No model commands executed."
+}

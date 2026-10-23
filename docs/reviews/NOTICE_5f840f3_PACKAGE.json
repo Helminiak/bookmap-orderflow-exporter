@@ -1,0 +1,38 @@
+{
+  "source_commit": "5f840f3a20c43865da5889ded97b90cce1a883b4",
+  "jar_filename": "bookmap-orderflow-exporter-v0.5a.jar",
+  "jar_sha256": "1f62776a44ffc5a6e368d3344932510b6416bd06bacf719477b58b15083a078e",
+  "jar_bytes": 619586,
+  "bundle_filename": "orderflow-v0.5a-windows-smoke-test.zip",
+  "bundle_sha256": "21f100824baab6d7aed259b8ad44db4afb048f136e9282258e8b67a564d06cd0",
+  "manifest": "Manifest-Version: 1.0\r\nImplementation-Version: 0.5.0\r\nOrderflow-Build-Revision: 0.5a\r\nOrderflow-Source-Revision: 5f840f3a20c43865da5889ded97b90cce1a883b4\r\nOrderflow-Working-Tree-Dirty: false\r\n\r\n",
+  "tested_main_classes_identical_in_jar": 24,
+  "required_entries": [
+    "com/limacharlie/orderflow/BridgeOperatorNotice.class",
+    "com/limacharlie/orderflow/BridgeOperatorNotice$HostLayout.class",
+    "org/zeromq/ZMQ.class",
+    "META-INF/THIRD-PARTY-NOTICES.txt"
+  ],
+  "jeromq_and_jnacl_present": true,
+  "bookmap_compile_only_classes_absent": true,
+  "java_tests": 36,
+  "python_tests": 15,
+  "native_Bookmap": "PENDING",
+  "font_scale_previews": "1.0/1.25/1.5 synthetic Swing host plus local realized LinuxSwingFrame",
+  "scope": "UI only; no exporter bridge queue journal config behavior changes",
+  "production_classes_identical_to_reviewed_5aa1ddc": true,
+  "repeat_build_identical": true,
+  "ubuntu_ci_jar_sha256": "ce52dbcb0df82e0745a66170e82795f7d582cc253626c901109cbecc9ed7d16f",
+  "ubuntu_ci_all_uncompressed_entries_identical": true,
+  "ci_archive_container_differs": true,
+  "push_ci": "https://github.com/Helminiak/bookmap-orderflow-exporter/actions/runs/37871090572",
+  "pr_ci": "https://github.com/Helminiak/bookmap-orderflow-exporter/actions/runs/37871094581",
+  "ci_result": "Windows and Ubuntu both passed push and PR runs",
+  "windows_ci_jar_sha256": "0ec1445eb4c5718ea0fdf378cd0b7ff1275a1cc42b710b9deba59abd4b9afb53",
+  "windows_ci_classes_and_manifest_identical": true,
+  "windows_ci_resource_crlf_only": [
+    "META-INF/THIRD-PARTY-NOTICES.txt",
+    "META-INF/licenses/JeroMQ-MPL-2.0.txt",
+    "META-INF/licenses/jnacl-BSD.txt"
+  ]
+}
