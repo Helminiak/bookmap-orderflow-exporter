@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.limacharlie.orderflow.ExporterShutdownTest" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-10-24T04:09:17" hostname="5090FE" time="7.155">
+  <properties/>
+  <testcase name="offlineReceiverCannotBlockHistoricalAcquisitionOrRealtimeTransition()" classname="com.limacharlie.orderflow.ExporterShutdownTest" time="0.017"/>
+  <testcase name="historicalStopDoesNotWaitForMissingReceiverCapacity()" classname="com.limacharlie.orderflow.ExporterShutdownTest" time="5.081"/>
+  <testcase name="summaryFailureStillClosesBridgeAndReleasesPorts()" classname="com.limacharlie.orderflow.ExporterShutdownTest" time="1.017"/>
+  <testcase name="interruptedWriterDrainLeavesExplicitInvalidSummaryAndTerminatesWriter()" classname="com.limacharlie.orderflow.ExporterShutdownTest" time="0.007"/>
+  <testcase name="stopCannotOvertakeAnAcceptedCallbackBeforeQueueInsertion()" classname="com.limacharlie.orderflow.ExporterShutdownTest" time="0.015"/>
+  <testcase name="retainedStartAndStopReportIncompleteDeliveryWithoutArtificialOverflow()" classname="com.limacharlie.orderflow.ExporterShutdownTest" time="1.016"/>
+  <system-out><![CDATA[[OrderflowExporter] alias=SYNTH.CME@TEST pips=0.25 queue=1000000 output=/tmp/junit-8142210257403305895/SYNTH.CME_TEST_20261024_040917_107.ndjson.gz
+[OrderflowExporter] complete: /tmp/junit-8142210257403305895/SYNTH.CME_TEST_20261024_040917_107.summary.json
+[OrderflowExporter] alias=SYNTH.CME@TEST pips=0.25 queue=1000000 output=/tmp/junit-15804919255520699837/SYNTH.CME_TEST_20261024_040917_125.ndjson.gz
+[OrderflowExporter] complete: /tmp/junit-15804919255520699837/SYNTH.CME_TEST_20261024_040917_125.summary.json
+[OrderflowExporter] alias=SYNTH.CME@TEST pips=0.25 queue=1000000 output=/tmp/junit-15804919255520699837/SYNTH.CME_TEST_20261024_040918_140.ndjson.gz
+[OrderflowExporter] complete: /tmp/junit-15804919255520699837/SYNTH.CME_TEST_20261024_040918_140.summary.json
+[OrderflowExporter] alias=SYNTH.CME@TEST pips=0.25 queue=1000000 output=/tmp/junit-15804919255520699837/SYNTH.CME_TEST_20261024_040919_156.ndjson.gz
+[OrderflowExporter] complete: /tmp/junit-15804919255520699837/SYNTH.CME_TEST_20261024_040919_156.summary.json
+[OrderflowExporter] alias=SYNTH.CME@TEST pips=0.25 queue=1000000 output=/tmp/junit-15804919255520699837/SYNTH.CME_TEST_20261024_040920_172.ndjson.gz
+[OrderflowExporter] complete: /tmp/junit-15804919255520699837/SYNTH.CME_TEST_20261024_040920_172.summary.json
+[OrderflowExporter] alias=SYNTH.CME@TEST pips=0.25 queue=1000000 output=/tmp/junit-15804919255520699837/SYNTH.CME_TEST_20261024_040921_188.ndjson.gz
+[OrderflowExporter] complete: /tmp/junit-15804919255520699837/SYNTH.CME_TEST_20261024_040921_188.summary.json
+[OrderflowExporter] alias=SYNTH.CME@TEST pips=0.25 queue=1000000 output=/tmp/junit-5043836319341324771/SYNTH.CME_TEST_20261024_040922_206.ndjson.gz
+[OrderflowExporter] alias=SYNTH.CME@TEST pips=0.25 queue=1000000 output=/tmp/junit-10467496401450667742/SYNTH.CME_TEST_20261024_040923_224.ndjson.gz
+[OrderflowExporter] alias=SYNTH.CME@TEST pips=0.25 queue=1000000 output=/tmp/junit-6256868125893520603/SYNTH.CME_TEST_20261024_040923_231.ndjson.gz
+[OrderflowExporter] complete: /tmp/junit-6256868125893520603/SYNTH.CME_TEST_20261024_040923_231.summary.json
+[OrderflowExporter] alias=SYNTH.CME@TEST pips=0.25 queue=1000000 output=/tmp/junit-348255455612169437/SYNTH.CME_TEST_20261024_040923_247.ndjson.gz
+[OrderflowExporter] complete: /tmp/junit-348255455612169437/SYNTH.CME_TEST_20261024_040923_247.summary.json
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

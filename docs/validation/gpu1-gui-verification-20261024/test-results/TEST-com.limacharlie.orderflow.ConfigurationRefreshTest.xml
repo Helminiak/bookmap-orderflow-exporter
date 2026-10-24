@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.limacharlie.orderflow.ConfigurationRefreshTest" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-10-24T04:09:17" hostname="5090FE" time="0.036">
+  <properties/>
+  <testcase name="enabledConfigurationIgnoresHiddenStatusRefreshAndRetainsEditingAndScroll()" classname="com.limacharlie.orderflow.ConfigurationRefreshTest" time="0.036"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

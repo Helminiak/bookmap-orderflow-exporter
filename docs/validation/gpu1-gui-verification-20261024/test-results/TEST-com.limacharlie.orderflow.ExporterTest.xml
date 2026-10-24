@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.limacharlie.orderflow.ExporterTest" tests="7" skipped="0" failures="0" errors="0" timestamp="2026-10-24T04:09:24" hostname="5090FE" time="0.074">
+  <properties/>
+  <testcase name="liveJournalOverflowReturnsAndFailsArchiveClosed()" classname="com.limacharlie.orderflow.ExporterTest" time="0.001"/>
+  <testcase name="bridgeOverflowLeavesCompleteJournal()" classname="com.limacharlie.orderflow.ExporterTest" time="0.006"/>
+  <testcase name="fullCallbacksMatchJournalAndWireExactly()" classname="com.limacharlie.orderflow.ExporterTest" time="0.055"/>
+  <testcase name="failedBridgeDoesNotStopJournal()" classname="com.limacharlie.orderflow.ExporterTest" time="0.003"/>
+  <testcase name="unchangedJournalContractAndOneAcquisition()" classname="com.limacharlie.orderflow.ExporterTest" time="0.004"/>
+  <testcase name="boundedBufferNeverWaitsAndRetainsOrder()" classname="com.limacharlie.orderflow.ExporterTest" time="0.0"/>
+  <testcase name="lazySerializationAndOverflowFailClosed()" classname="com.limacharlie.orderflow.ExporterTest" time="0.002"/>
+  <system-out><![CDATA[[OrderflowExporter] alias=SYNTH.CME@TEST pips=0.25 queue=1000000 output=/tmp/junit-8316592912197901053/SYNTH.CME_TEST_20261024_040924_488.ndjson.gz
+[OrderflowExporter] complete: /tmp/junit-8316592912197901053/SYNTH.CME_TEST_20261024_040924_488.summary.json
+[OrderflowExporter] alias=SYNTH.CME@TEST pips=0.25 queue=1000000 output=/tmp/junit-17947768058421613301/SYNTH.CME_TEST_20261024_040924_496.ndjson.gz
+[OrderflowExporter] complete: /tmp/junit-17947768058421613301/SYNTH.CME_TEST_20261024_040924_496.summary.json
+[OrderflowExporter] alias=SYNTH.CME@TEST pips=0.25 queue=1000000 output=/tmp/junit-10318976429240120302/SYNTH.CME_TEST_20261024_040924_550.ndjson.gz
+[OrderflowExporter] complete: /tmp/junit-10318976429240120302/SYNTH.CME_TEST_20261024_040924_550.summary.json
+[OrderflowExporter] alias=SYNTH.CME@TEST pips=0.25 queue=1000000 output=/tmp/junit-16211072560209842168/SYNTH.CME_TEST_20261024_040924_553.ndjson.gz
+[OrderflowExporter] complete: /tmp/junit-16211072560209842168/SYNTH.CME_TEST_20261024_040924_553.summary.json
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

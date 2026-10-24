@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.limacharlie.orderflow.WriterStallTest" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-10-24T04:09:25" hostname="5090FE" time="5.213">
+  <properties/>
+  <testcase name="stalledWriterFailsExportInsteadOfBlockingCallbackForever()" classname="com.limacharlie.orderflow.WriterStallTest" time="5.213"/>
+  <system-out><![CDATA[[OrderflowExporter] alias=SYNTH.CME@TEST pips=0.25 queue=10000 output=/tmp/junit-12735729452063063731/SYNTH.CME_TEST_20261024_040925_933.ndjson.gz
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.limacharlie.orderflow.BridgeHealthQueryTest" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-10-24T04:09:15" hostname="5090FE" time="0.768">
+  <properties/>
+  <testcase name="terminalAckWithinRetentionBudgetCompletesSession()" classname="com.limacharlie.orderflow.BridgeHealthQueryTest" time="0.033"/>
+  <testcase name="disconnectedTransportRetainsEventsForSameOwner()" classname="com.limacharlie.orderflow.BridgeHealthQueryTest" time="0.411"/>
+  <testcase name="missingHealthServerTimesOut()" classname="com.limacharlie.orderflow.BridgeHealthQueryTest" time="0.052"/>
+  <testcase name="reloadReleasesTheSamePortsBeforeRebind()" classname="com.limacharlie.orderflow.BridgeHealthQueryTest" time="0.111"/>
+  <testcase name="historicalQueueWaitsForAckWithoutOverflow()" classname="com.limacharlie.orderflow.BridgeHealthQueryTest" time="0.111"/>
+  <testcase name="probeReadsHealthWithoutRegisteringAReceiver()" classname="com.limacharlie.orderflow.BridgeHealthQueryTest" time="0.048"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.limacharlie.orderflow.ExporterTabsTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-10-24T04:09:24" hostname="5090FE" time="0.222">
+  <properties/>
+  <testcase name="bookmapOuterScrollReachesEveryFieldAndApply()" classname="com.limacharlie.orderflow.ExporterTabsTest" time="0.119"/>
+  <testcase name="applyStillSavesEditedSettingsAndReloadsOnce()" classname="com.limacharlie.orderflow.ExporterTabsTest" time="0.073"/>
+  <testcase name="configurationAndApplyShareTheWholePage()" classname="com.limacharlie.orderflow.ExporterTabsTest" time="0.029"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

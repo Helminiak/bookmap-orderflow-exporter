@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.limacharlie.orderflow.ReplayJournalTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-10-24T04:09:24" hostname="5090FE" time="1.319">
+  <properties/>
+  <testcase name="providerAndUnknownSourceNeverWaitOnFullLiveQueue()" classname="com.limacharlie.orderflow.ReplayJournalTest" time="0.047"/>
+  <testcase name="replayWriterStallAfterRealtimeStartStillFailsClosed()" classname="com.limacharlie.orderflow.ReplayJournalTest" time="1.004"/>
+  <testcase name="bookmapReplayBackpressuresBurstAfterRealtimeStartAndFinalizesLosslessly()" classname="com.limacharlie.orderflow.ReplayJournalTest" time="0.268"/>
+  <system-out><![CDATA[[OrderflowExporter] alias=SYNTH.CME@TEST pips=0.25 queue=10000 output=/tmp/junit-11332402842248129762/true/SYNTH.CME_TEST_20261024_040924_614.ndjson.gz
+[OrderflowExporter] alias=SYNTH.CME@TEST pips=0.25 queue=10000 output=/tmp/junit-11332402842248129762/null/SYNTH.CME_TEST_20261024_040924_635.ndjson.gz
+[OrderflowExporter] alias=SYNTH.CME@TEST pips=0.25 queue=10000 output=/tmp/junit-10206236091650957146/SYNTH.CME_TEST_20261024_040924_661.ndjson.gz
+[OrderflowExporter] alias=SYNTH.CME@TEST pips=0.25 queue=10000 output=/tmp/junit-15981289032808298143/SYNTH.CME_TEST_20261024_040925_664.ndjson.gz
+[OrderflowExporter] complete: /tmp/junit-15981289032808298143/SYNTH.CME_TEST_20261024_040925_664.summary.json
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

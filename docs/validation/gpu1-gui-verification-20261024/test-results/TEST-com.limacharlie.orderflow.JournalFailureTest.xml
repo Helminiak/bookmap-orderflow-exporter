@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.limacharlie.orderflow.JournalFailureTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-10-24T04:09:24" hostname="5090FE" time="0.051">
+  <properties/>
+  <testcase name="outputOpenFailureIsExplicitAndCannotCertifyArchive()" classname="com.limacharlie.orderflow.JournalFailureTest" time="0.002"/>
+  <testcase name="outputWriteAndCloseFailuresInvalidateOtherwiseCompleteCounts()" classname="com.limacharlie.orderflow.JournalFailureTest" time="0.013"/>
+  <testcase name="stalledStorageDoesNotBlockResponsiveLiveCallbacksAndOverflowIsExplicit()" classname="com.limacharlie.orderflow.JournalFailureTest" time="0.035"/>
+  <system-out><![CDATA[[OrderflowExporter] alias=SYNTH.CME@TEST pips=0.25 queue=10000 output=/tmp/junit-11985302970452734457/SYNTH.CME_TEST_20261024_040924_562.ndjson.gz
+[OrderflowExporter] alias=SYNTH.CME@TEST pips=0.25 queue=10000 output=/tmp/junit-16739027655636207812/SYNTH.CME_TEST_20261024_040924_564.ndjson.gz
+[OrderflowExporter] alias=SYNTH.CME@TEST pips=0.25 queue=10000 output=/tmp/junit-16739027655636207812/SYNTH.CME_TEST_20261024_040924_571.ndjson.gz
+[OrderflowExporter] alias=SYNTH.CME@TEST pips=0.25 queue=10000 output=/tmp/junit-9624675628293291851/SYNTH.CME_TEST_20261024_040924_578.ndjson.gz
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.limacharlie.orderflow.ArchiveFinalizationTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-10-24T04:09:15" hostname="5090FE" time="0.043">
+  <properties/>
+  <testcase name="cleanStopFsyncsAndAtomicallyRenamesPartialToFinalArchive()" classname="com.limacharlie.orderflow.ArchiveFinalizationTest" time="0.034"/>
+  <testcase name="failedWriteLeavesExplicitPartialAndNeverCreatesFinalArchive()" classname="com.limacharlie.orderflow.ArchiveFinalizationTest" time="0.009"/>
+  <system-out><![CDATA[[OrderflowExporter] alias=SYNTH.CME@TEST pips=0.25 queue=10000 output=/tmp/junit-6626404098128273115/SYNTH.CME_TEST_20261024_040915_758.ndjson.gz
+[OrderflowExporter] complete: /tmp/junit-6626404098128273115/SYNTH.CME_TEST_20261024_040915_758.summary.json
+[OrderflowExporter] alias=SYNTH.CME@TEST pips=0.25 queue=10000 output=/tmp/junit-746797068526690104/SYNTH.CME_TEST_20261024_040915_780.ndjson.gz
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>
