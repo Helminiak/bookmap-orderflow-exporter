@@ -4,6 +4,7 @@ import velox.api.layer1.annotations.Layer1ApiVersion;
 import velox.api.layer1.annotations.Layer1ApiVersionValue;
 import velox.api.layer1.annotations.Layer1SimpleAttachable;
 import velox.api.layer1.annotations.Layer1StrategyName;
+import velox.api.layer1.common.RunModeHelper;
 import velox.api.layer1.data.InstrumentInfo;
 import velox.api.layer1.data.TradeInfo;
 import velox.api.layer1.settings.StrategySettingsVersion;
@@ -173,6 +174,9 @@ public class BookmapOrderflowExporter
     private volatile long firstMarketNs = Long.MIN_VALUE;
     private volatile long lastMarketNs = Long.MIN_VALUE;
     private volatile boolean realtimePhase = false;
+    // Callback phase and data source are independent: Bookmap replay also calls onRealtimeStart.
+    // null means unknown; only an explicit false authorizes replay backpressure after that callback.
+    private volatile Boolean providerSource;
     private final Object lifecycleLock = new Object();
     private volatile boolean stopped = false;
 
@@ -213,6 +217,7 @@ public class BookmapOrderflowExporter
     private volatile long lastFlushEpochMs = 0L;
 
     private volatile JLabel statusLabel;
+    private volatile JTabbedPane statusTabs;
 
     private record OrderState(boolean bid, int priceLevel, int size) {}
 
@@ -301,6 +306,7 @@ public class BookmapOrderflowExporter
         firstMarketNs = Long.MIN_VALUE;
         lastMarketNs = Long.MIN_VALUE;
         realtimePhase = false;
+        providerSource = RunModeHelper.isLive();
         stopped = false;
         mboAdds = 0L;
         mboReplaces = 0L;
@@ -715,6 +721,8 @@ public class BookmapOrderflowExporter
                 new JCheckBox(
                         "Responsive LIVE journal (overflow invalidates archive)",
                         settings.responsiveLiveJournal);
+        liveJournalBox.setToolTipText(
+                "Bookmap file replay always waits for journal capacity, including after REALTIME_START.");
         JTextField bindField = new JTextField(settings.bridgeBind, 15);
         JSpinner portSpinner =
                 new JSpinner(new SpinnerNumberModel(settings.bridgePort, 1, 65535, 1));
@@ -808,7 +816,6 @@ public class BookmapOrderflowExporter
 
         if (instance != null) {
             instance.statusLabel = status;
-            instance.refreshStatusLabel();
             refreshButton.addActionListener(e -> instance.refreshStatusLabel());
             openFolderButton.addActionListener(e -> instance.openOutputFolder());
         } else {
@@ -828,6 +835,10 @@ public class BookmapOrderflowExporter
         tabs.addTab("Live status", statusPanel);
         tabs.addTab("Information", buildInformationPanel());
         tabs.setSelectedIndex(0);
+        if (instance != null) {
+            instance.statusTabs = tabs;
+            tabs.addChangeListener(e -> instance.refreshStatusLabel());
+        }
         return tabs;
     }
 
@@ -938,6 +949,10 @@ public class BookmapOrderflowExporter
 
         Runnable update =
                 () -> {
+                    // Hidden HTML changes can invalidate Bookmap's outer settings layout and
+                    // disturb scrolling/focus. Refresh on selecting Live status instead.
+                    JTabbedPane tabs = statusTabs;
+                    if (tabs == null || tabs.getSelectedIndex() != 1) return;
                     Throwable error = writerError.get();
                     int queueSize = queue == null ? 0 : queue.size();
                     int queueCapacity =
@@ -950,6 +965,7 @@ public class BookmapOrderflowExporter
                     b.append("<html>");
                     b.append("<b>Instrument:</b> ").append(html(alias)).append("<br/>");
                     b.append("<b>Mode:</b> ").append(phase()).append("<br/>");
+                    b.append("<b>Source:</b> ").append(sourceMode()).append("<br/>");
                     b.append("<b>Status:</b> ")
                             .append(error == null ? html(uiMessage) : "WRITER ERROR")
                             .append("<br/>");
@@ -1208,14 +1224,15 @@ public class BookmapOrderflowExporter
         }
     }
 
-    /** Strict historical extraction; LIVE queue overflow fails the archive instead of waiting. */
+    /** History and Bookmap file replay wait for capacity; responsive provider LIVE fails closed. */
     private void enqueue(CanonicalEvent event) {
         if (bridge != null) {
             // Receiver availability never blocks acquisition, including HISTORY catch-up.
             if (stopped) bridge.offerTerminal(event);
             else bridge.offer(event);
         }
-        boolean responsive = realtimePhase && settings.responsiveLiveJournal;
+        boolean responsive = realtimePhase && settings.responsiveLiveJournal
+                && !Boolean.FALSE.equals(providerSource);
         Throwable error = writerError.get();
         if (error != null) {
             if (!responsive)
@@ -1369,6 +1386,10 @@ public class BookmapOrderflowExporter
         return realtimePhase ? "REALTIME" : "HISTORY";
     }
 
+    private String sourceMode() {
+        return providerSource == null ? "UNKNOWN" : providerSource ? "PROVIDER" : "BOOKMAP_REPLAY";
+    }
+
     private void writeSummary() throws IOException {
         Throwable error = writerError.get();
         boolean valid = error == null;
@@ -1380,6 +1401,7 @@ public class BookmapOrderflowExporter
         rawNumberField(b, "pips", Double.toString(pips)).append(',');
         rawNumberField(b, "multiplier", Double.toString(multiplier)).append(',');
         field(b, "event_file", eventFile.getFileName().toString()).append(',');
+        field(b, "bookmap_source_mode", sourceMode()).append(',');
         booleanField(b, "archive_finalized", archiveFinalized.get()).append(',');
         booleanField(b, "writer_ok", valid).append(',');
         nullableStringField(b, "writer_error", error == null ? null : error.toString()).append(',');

@@ -1,3 +1,12 @@
+## DR100 narrow offline repair — 2026-10-23
+
+[DR100 journal/UI repair](docs/validation/2026-10-23-dr100-journal-ui-repair.md) records archive phase evidence, a replay-aware strict journal policy,
+and hidden-status refresh suppression. Source baseline is PR #6 `58ea521`;
+no native installation or GUI operation occurred. Local Java/Python and synthetic
+million-slot evidence is in that report; exact final commit, binary hashes and
+CI status belong to the delivered receipts. Native replay/source-mode and Windows
+scroll/focus verification remain open. This checkpoint supersedes no production gate.
+
 # Master engineering handoff — 2026-10-08
 
 ## Latest verification checkpoint

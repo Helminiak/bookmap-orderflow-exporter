@@ -1,3 +1,14 @@
+## DR100 replay intake / configuration refresh — 2026-10-23
+
+[Offline repair evidence](validation/2026-10-23-dr100-journal-ui-repair.md):
+Bookmap REALTIME callback phase can occur during file replay. Explicit replay now
+keeps strict lossless journal backpressure; provider/unknown LIVE stays responsive
+and explicitly invalidates on overflow. Hidden HTML status updates are suppressed
+while Configuration/Information is selected. Regressions and a 1m-slot synthetic
+capture pass locally. Original failed capture remains invalid. Native loaded source
+flag, sustained replay, Windows scrolling/focus/DPI and exact-head CI acceptance
+remain pending; this is no production/release certification.
+
 > Production milestone: [native shutdown evidence](validation/2026-10-08-native-shutdown-failure.md) confirms a missing sequence before STOP despite a healthy summary and bridge overflow at shutdown. These block release acceptance. Current-layout controls were inspected in Windows Bookmap; native 125%/150% and REALTIME/soak remain open. The host repair described below is historical context, not certification of shutdown integrity.
 
 Latest UI follow-up: [v0.5a whole-page preview](UI_V05A_2026-10-08.md). The owner reports the previous repair disables successfully with a short pause. v0.5a moves the complete Configuration form and Apply into Bookmap's outer scrolling page and adds original Information/help content. Runtime/defaults are unchanged; actual new-preview Windows Bookmap acceptance remains pending. [Marketplace draft](MARKETPLACE_DRAFT.md) is preparation only, not submission or release approval. Older state below is historical.
