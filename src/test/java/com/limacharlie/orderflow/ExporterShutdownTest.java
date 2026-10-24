@@ -274,18 +274,52 @@ class ExporterShutdownTest {
     }
 
     @Test
-    void offlineReceiverCannotBlockHistoricalAcquisitionOrRealtimeTransition() throws Exception {
+    void missingHistoricalReceiverFailsClosedWithinExistingTenSecondBound() throws Exception {
         var exporter = exporter(ExporterTest.freePort(), ExporterTest.freePort());
         try {
             awaitBound(exporter);
-            assertTimeoutPreemptively(
-                    Duration.ofMillis(500),
-                    () -> {
-                        exporter.send("offline", true, 20000, 2);
-                        exporter.onRealtimeStart();
-                    });
+            // START fills retention. Historical pacing is intentional, but never unbounded.
+            assertTimeoutPreemptively(Duration.ofSeconds(12),
+                    () -> exporter.send("offline", true, 20000, 2));
+            exporter.onRealtimeStart();
         } finally {
             exporter.stop();
+        }
+        try (var files = Files.list(dir)) {
+            String summary = Files.readString(files.filter(p -> p.toString().endsWith("summary.json"))
+                    .findFirst().orElseThrow());
+            assertTrue(summary.contains("historical receiver backpressure timeout"));
+            assertTrue(summary.contains("\"writer_ok\":true"));
+            assertTrue(summary.contains("\"delivery_complete\":false"));
+            assertTrue(summary.contains("\"overflows\":0"));
+        }
+    }
+
+    // These shutdown controls deliberately begin at provider/unknown LIVE with retained START,
+    // independently of the restored, intentionally waiting historical transition.
+    void enterLivePhase(BookmapOrderflowExporter exporter) throws Exception {
+        var phase = BookmapOrderflowExporter.class.getDeclaredField("realtimePhase");
+        phase.setAccessible(true);
+        phase.setBoolean(exporter, true);
+    }
+
+    @Test
+    void offlineReceiverCannotBlockProviderLiveAcquisition() throws Exception {
+        try (var mode = ReplayJournalTest.sourceMode(true)) {
+            var exporter = exporter(ExporterTest.freePort(), ExporterTest.freePort());
+            try {
+                awaitBound(exporter);
+                enterLivePhase(exporter);
+                assertTimeoutPreemptively(Duration.ofMillis(500),
+                        () -> exporter.send("offline-live", true, 20000, 2));
+            } finally { exporter.stop(); }
+            try (var files = Files.list(dir)) {
+                String summary = Files.readString(files.filter(p -> p.toString().endsWith("summary.json"))
+                        .findFirst().orElseThrow());
+                assertTrue(summary.contains("outbound buffer overflow"));
+                assertTrue(summary.contains("\"writer_ok\":true"));
+                assertTrue(summary.contains("\"delivery_complete\":false"));
+            }
         }
     }
 
@@ -293,6 +327,7 @@ class ExporterShutdownTest {
     void retainedStartAndStopReportIncompleteDeliveryWithoutArtificialOverflow() throws Exception {
         var exporter = exporter(ExporterTest.freePort(), ExporterTest.freePort());
         awaitBound(exporter);
+        enterLivePhase(exporter);
         exporter.stop();
         String summary =
                 Files.readString(
@@ -312,12 +347,13 @@ class ExporterShutdownTest {
     }
 
     @Test
-    void historicalStopDoesNotWaitForMissingReceiverCapacity() throws Exception {
+    void providerLiveStopDoesNotWaitForMissingReceiverCapacity() throws Exception {
         for (int iteration = 0; iteration < 5; iteration++) {
             int port = ExporterTest.freePort(), health = ExporterTest.freePort();
             var exporter = exporter(port, health);
             try {
                 awaitBound(exporter); // START fills the one-event retention; no receiver ACKs it.
+                enterLivePhase(exporter);
                 assertTimeoutPreemptively(Duration.ofSeconds(3), exporter::stop);
                 assertCanRebind(port, health);
                 Path capture =

@@ -1,3 +1,7 @@
+## DR100 bridge startup restoration — 2026-10-24
+
+See [bounded restoration evidence](docs/validation/2026-10-24-bridge-startup-restoration.md). Startup HISTORY and explicit file Replay reuse existing bounded ACK pacing. Provider LIVE stays responsive. Missing/stalled receiver may delay a historical/replay callback or stop by up to the existing ten-second bound, then bridge fails closed; native qualification remains pending.
+
 ## DR100 narrow offline repair — 2026-10-23
 
 [DR100 journal/UI repair](docs/validation/2026-10-23-dr100-journal-ui-repair.md) records archive phase evidence, a replay-aware strict journal policy,

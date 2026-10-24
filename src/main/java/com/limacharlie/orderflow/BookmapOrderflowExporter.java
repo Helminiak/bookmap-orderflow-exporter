@@ -545,6 +545,7 @@ public class BookmapOrderflowExporter
         try {
             synchronized (lifecycleLock) {
                 if (stopped) return;
+                if (bridge != null) bridge.finishHistorical();
                 realtimePhase = true;
                 emitControl("REALTIME_START", "Bookmap historical catch-up completed");
                 uiMessage = "Realtime";
@@ -567,6 +568,10 @@ public class BookmapOrderflowExporter
                 scheduleStatusRefresh(true);
                 if (writerError.get() == null || realtimePhase)
                     emitControl("STOP", "module stopped");
+                // Replay/history may drain bounded ACK backlog, including the reserved STOP.
+                // Provider LIVE retains its responsive admission and existing close grace.
+                if (bridge != null && (!realtimePhase || Boolean.FALSE.equals(providerSource)))
+                    bridge.finishHistorical();
             }
             long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(30);
             while (writerThread.isAlive() && !queue.offer(POISON)) {
@@ -1227,8 +1232,11 @@ public class BookmapOrderflowExporter
     /** History and Bookmap file replay wait for capacity; responsive provider LIVE fails closed. */
     private void enqueue(CanonicalEvent event) {
         if (bridge != null) {
-            // Receiver availability never blocks acquisition, including HISTORY catch-up.
+            // Reuse bounded startup pacing; explicit file replay also needs it after
+            // REALTIME_START. Provider/unknown REALTIME callbacks remain non-waiting.
             if (stopped) bridge.offerTerminal(event);
+            else if (!realtimePhase || Boolean.FALSE.equals(providerSource))
+                bridge.offerHistorical(event);
             else bridge.offer(event);
         }
         boolean responsive = realtimePhase && settings.responsiveLiveJournal
