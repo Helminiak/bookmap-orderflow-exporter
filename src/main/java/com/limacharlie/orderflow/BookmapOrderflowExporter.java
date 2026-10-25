@@ -223,13 +223,22 @@ public class BookmapOrderflowExporter
 
     @Override
     public void initialize(String alias, InstrumentInfo info, Api api, InitialState initialState) {
+        // R-08: the previous session is released before ANY session field (alias included) is
+        // replaced, so a refused reload cannot attribute the previous session's journal/summary
+        // to the new alias. resetRunState() returns false when the previous writer could not be
+        // proven terminated inside the bound: the rebind is then refused outright — no new
+        // session, writer, bridge or queue — instead of silently rebuilding behind it.
+        if (!resetRunState()) {
+            uiMessage = "Reload refused: previous session writer still running";
+            scheduleStatusRefresh(true);
+            throw new IllegalStateException(
+                    "Orderflow exporter reload refused: previous session writer did not terminate");
+        }
         this.api = api;
         this.alias = alias;
         this.pips = info.pips;
         this.multiplier = info.multiplier;
         this.settings = api.getSettings(Settings.class);
-
-        resetRunState();
 
         try {
             String configured = trimToEmpty(settings.outputDirectory);
@@ -292,13 +301,44 @@ public class BookmapOrderflowExporter
         }
     }
 
-    private void resetRunState() {
+    private boolean resetRunState() {
+        // R-08: a settings reload re-enters initialize() without stop(), so the previous session's
+        // journal writer, EventBuffer, open .partial handles and bridge are still live at the
+        // moment the fields below are overwritten. Releasing them here — before the overwrite, and
+        // only when a session actually exists (first initialize) — keeps the archives independent:
+        // the old journal is drained and finalized with the old counts, its own summary is written,
+        // and its writer/queue/file handles exit before the new session can be reached.
+        // Returning false means the previous writer is still live: NOTHING below is replaced.
+        if (writerThread != null
+                && (writerThread.isAlive() || !stopped)
+                && !releasePreviousSession()) {
+            // Fail closed: the previous writer is still alive inside the bound, so it can still
+            // drain the shared queue field and mutate the counters. Replacing those fields would
+            // let it consume the new session's records, so the reload is refused instead; the
+            // previous session keeps its own failed status and stays reachable.
+            return false;
+        }
         orders.clear();
+        // A settings reload (Apply handler: api.setSettings + api.reload) re-enters initialize()
+        // on the live instance, and Bookmap does not run stop() on that path. Nulling the bridge
+        // here would discard the previous session's only reference, leaving its ROUTER/REP and
+        // publisher thread still bound to the same port pair: a fresh receiver's HELLO is then
+        // consumed by the stale listener and the new session cannot bind (Errno 48) and is
+        // invalidated behind the exporter's back. Release the previous session before the
+        // discard/rebind. close() is idempotent (AtomicBoolean guard), so the stop() teardown
+        // path below is unchanged; this wait is a lifecycle reload wait, like stop()'s existing
+        // drain/ACK grace, and never runs inside a Bookmap callback.
+        LiveBridge previous = bridge;
         bridge = null;
+        if (previous != null) previous.close();
         bridgeFailure = "";
         journalOverflows = 0;
         journalDropped = 0;
         journalHighWater = 0;
+        // R-08: the flag describes the CURRENT session's archive. The previous session's .partial
+        // rename already ran in releasePreviousSession() above, so a reloaded session must not
+        // inherit its predecessor's archive_finalized claim.
+        archiveFinalized.set(false);
         callbackMetrics = new CallbackMetrics();
         writerError.set(null);
         marketNs = 0L;
@@ -327,6 +367,7 @@ public class BookmapOrderflowExporter
         lastMboDisplay = () -> "No MBO event received yet";
         lastTradeDisplay = () -> "No trade received yet";
         uiMessage = "Initializing";
+        return true;
     }
 
     @Override
@@ -573,27 +614,7 @@ public class BookmapOrderflowExporter
                 if (bridge != null && (!realtimePhase || Boolean.FALSE.equals(providerSource)))
                     bridge.finishHistorical();
             }
-            long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(30);
-            while (writerThread.isAlive() && !queue.offer(POISON)) {
-                if (System.nanoTime() > deadline)
-                    throw new IllegalStateException("Writer stop queue timeout");
-                Thread.sleep(1);
-            }
-            writerThread.join(30_000L);
-            if (writerThread.isAlive()) {
-                throw new IllegalStateException("Writer did not terminate within 30 seconds");
-            }
-            if (recordsPersisted != sequence) {
-                writerError.compareAndSet(
-                        null,
-                        new IllegalStateException(
-                                "Journal count mismatch: allocated="
-                                        + sequence
-                                        + ", persisted="
-                                        + recordsPersisted));
-            }
-            if (bridge != null) bridge.close();
-            writeSummary();
+            teardownActiveSession(30L);
             Throwable error = writerError.get();
             if (error != null) {
                 throw new IllegalStateException("Writer failed; export is not valid", error);
@@ -1074,6 +1095,118 @@ public class BookmapOrderflowExporter
             update.run();
         } else {
             SwingUtilities.invokeLater(update);
+        }
+    }
+
+    // R-08: paired release of the previous session on the settings-reload path. Runs the SAME
+    // normal session finalization stop() runs — the terminal STOP control frame first, then the
+    // bounded journal drain, writer exit, R-07 finalization and that session's summary — so the
+    // previous archive keeps its START..REALTIME_START..STOP lifecycle, its own counters and its
+    // gzip trailer, instead of a journal that merely happens to match counts. The old bridge
+    // takes the STOP through its reserved terminal slot (offerTerminal never waits); when its
+    // unACKed backlog cannot absorb it the bridge fails closed separately and that old session
+    // stays explicitly failed/undelivered, never reported as a valid archive.
+    // finishHistorical() is deliberately NOT reused here: it waits up to 10s for receiver ACK
+    // capacity, while initialize() is Bookmap's callback path. An undrained old backlog must
+    // remain FAILED, must not become a network wait inside the Apply handler.
+    // Returns true only when the previous writer was PROVEN terminated inside the bound; false
+    // tells the caller to refuse the rebind rather than proceed behind a live writer.
+    private boolean releasePreviousSession() {
+        Throwable fault = null;
+        try {
+            synchronized (lifecycleLock) {
+                if (!stopped) {
+                    stopped = true;
+                    if (writerError.get() == null || realtimePhase)
+                        emitControl("STOP", "module stopped");
+                }
+            }
+        } catch (IllegalStateException terminalRefused) {
+            // The journal refuses the terminal frame (strict enqueue already failed): that is the
+            // previous session's own fault and must not be normalized away.
+            fault = terminalRefused;
+        }
+        if (fault == null) {
+            try {
+                teardownActiveSession(writerStallTimeoutSeconds);
+            } catch (InterruptedException interruption) {
+                fault =
+                        new IllegalStateException("Previous session teardown interrupted", interruption);
+            } catch (IOException | IllegalStateException teardownFault) {
+                fault = teardownFault;
+            }
+        }
+        if (fault != null) writerError.compareAndSet(null, fault);
+        if (writerThread != null && writerThread.isAlive()) {
+            // The bound expired with the previous writer still live (interrupt-resistant or hung
+            // journal I/O). Its POISON request and this interrupt are asks, not proofs, so the
+            // shared fields stay untouched: a writer that can still drain the old EventBuffer
+            // must never sit behind a new session. Record the previous session's failed status
+            // with its own counts, then refuse — and do not block the Apply handler any longer.
+            writerThread.interrupt();
+            // R-08: the writer is the half that cannot be proven terminated, so the fields stay
+            // untouched; the OLD bridge can and must be released independently of it. close() is
+            // bounded (1s ACK grace + 1.5s worker join), idempotent, and fails closed: with an
+            // unACKed backlog it invalidates as "shutdown with unacknowledged events", accounts
+            // every retained record in discarded_unacknowledged, publishes nothing further and
+            // releases both ports, so a later reload cannot bind behind a stale listener. Failing
+            // the bridge closed is not the same as reporting the session healthy: its journal
+            // fault, incomplete .partial archive and failed summary stay as recorded below.
+            if (bridge != null) bridge.close();
+            try {
+                writeSummary();
+            } catch (IOException summaryFailure) {
+                uiMessage = "Previous session summary write failed: " + summaryFailure;
+            }
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * R-08: bounded shutdown of the ACTIVE session's journal writer and bridge. stop() runs it
+     * after the STOP frame; the settings-reload re-entry in initialize() runs it BEFORE the
+     * session fields are overwritten, which is the only place the previous session can still be
+     * reached. Drain the journal (pending records ahead of POISON are persisted in sequence
+     * order), wait for the writer to exit so its streams and file handles close and the R-07
+     * finalization runs, fail closed on a count mismatch, release the bridge, then write that
+     * session's summary. A writer that will not drain inside the bound is interrupted so it
+     * cannot keep consuming records after the fields are reset; the fault propagates to the
+     * caller, which records it — stop() fails the export with its existing semantics, the reload
+     * path keeps the previous session's own failure status and still starts a clean new session.
+     */
+    private void teardownActiveSession(long boundSeconds)
+            throws InterruptedException, IOException, IllegalStateException {
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(boundSeconds);
+        try {
+            while (writerThread.isAlive() && !queue.offer(POISON)) {
+                if (System.nanoTime() > deadline)
+                    throw new IllegalStateException("Writer stop queue timeout");
+                Thread.sleep(1);
+            }
+            writerThread.join(boundSeconds * 1_000L);
+            if (writerThread.isAlive()) {
+                writerThread.interrupt();
+                writerThread.join(boundSeconds * 1_000L);
+                if (writerThread.isAlive())
+                    throw new IllegalStateException(
+                            "Writer did not terminate within " + boundSeconds + " seconds");
+            }
+            if (recordsPersisted != sequence) {
+                writerError.compareAndSet(
+                        null,
+                        new IllegalStateException(
+                                "Journal count mismatch: allocated="
+                                        + sequence
+                                        + ", persisted="
+                                        + recordsPersisted));
+            }
+            if (bridge != null) bridge.close();
+            writeSummary();
+        } catch (InterruptedException interruption) {
+            writerThread.interrupt();
+            Thread.currentThread().interrupt();
+            throw interruption;
         }
     }
 
