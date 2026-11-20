@@ -627,7 +627,8 @@ public class BookmapOrderflowExporter
             if (error != null) {
                 throw new IllegalStateException("Writer failed; export is not valid", error);
             }
-            boolean deliveryFailed = bridge != null && bridge.invalid();
+            LiveBridge finished = bridge;
+            boolean deliveryFailed = finished != null && finished.invalid();
             // The archive is complete either way; receiver delivery is a separate outcome.
             uiMessage =
                     deliveryFailed
@@ -639,7 +640,7 @@ public class BookmapOrderflowExporter
                             + summaryFile
                             + (deliveryFailed
                                     ? " (archive OK; BRIDGE DELIVERY FAILED: "
-                                            + bridge.failureReason()
+                                            + finished.failureReason()
                                             + ")"
                                     : ""));
         } catch (InterruptedException e) {

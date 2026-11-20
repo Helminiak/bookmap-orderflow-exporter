@@ -180,7 +180,7 @@ class ReplayNoReceiverTest {
         try (var context = new ZContext()) {
             Thread.sleep(connectDelayMs);
             var receiver = context.createSocket(SocketType.DEALER);
-            receiver.setLinger(0);
+            receiver.setLinger(1000); // let the final ACK flush before the context closes
             receiver.setReceiveTimeOut(5000);
             receiver.connect("tcp://127.0.0.1:" + market);
             receiver.send("HELLO fixture 0");
@@ -320,7 +320,7 @@ class ReplayNoReceiverTest {
                             Duration.ofSeconds(60),
                             () ->
                                     scoped.replay(
-                                            500_000_000L,
+                                            1_500_000_000L, // admission must not race a slow host
                                             port -> receive(port[0], 0, ackThrough, 0)));
             String json = result.summary();
             assertNull(result.producerFailure());

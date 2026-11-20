@@ -273,6 +273,14 @@ public final class LiveBridge implements AutoCloseable {
 
     public String status() {
         double seconds = Math.max(.001, (System.nanoTime() - started) / 1e9);
+        // One consistent view of the terminal-failure triple (written together in invalidate()).
+        final boolean invalidNow;
+        final String reasonNow, failureNow;
+        synchronized (invalidLock) {
+            invalidNow = invalid;
+            reasonNow = reason;
+            failureNow = failureCode;
+        }
         return "{\"protocol\":"
                 + quote(PROTOCOL)
                 + ",\"addon_version\":\"0.5.0\",\"session\":"
@@ -282,13 +290,13 @@ public final class LiveBridge implements AutoCloseable {
                 + ",\"pips\":"
                 + pips
                 + ",\"state\":"
-                + quote(shownState())
+                + quote(invalidNow ? "INVALID" : state)
                 + ",\"invalid\":"
-                + invalid
+                + invalidNow
                 + ",\"reason\":"
-                + quote(reason)
+                + quote(reasonNow)
                 + ",\"failure_code\":"
-                + (failureCode.isEmpty() ? "null" : quote(failureCode))
+                + (failureNow.isEmpty() ? "null" : quote(failureNow))
                 + ",\"receiver\":"
                 + quote(receiver)
                 + ",\"queue_depth\":"
