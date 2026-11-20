@@ -18,6 +18,13 @@ import java.util.function.Supplier;
  */
 public final class LiveBridge implements AutoCloseable {
     public static final String PROTOCOL = "orderflow-live-v0.1";
+    /** Production bound for one stalled historical wait / drain. Tests inject a shorter value. */
+    static final long DEFAULT_HISTORICAL_WAIT_NANOS = 10_000_000_000L;
+    /** D-05-1: no receiver completed HELLO admission before the historical wait ended. */
+    static final String FAILURE_RECEIVER_ADMISSION = "RECEIVER_ADMISSION_TIMEOUT";
+    /** An admitted receiver stopped ACKing: existing historical backpressure policy. */
+    static final String FAILURE_RECEIVER_ACK = "RECEIVER_ACK_TIMEOUT";
+    static final String FAILURE_BRIDGE_INVALID = "BRIDGE_INVALID";
     private final String bind, alias, session = UUID.randomUUID().toString();
     private final int port, healthPort, capacity;
     private final double pips;
@@ -29,7 +36,9 @@ public final class LiveBridge implements AutoCloseable {
     private volatile long lastOfferedSeq;
     private final java.util.concurrent.atomic.AtomicBoolean closing =
             new java.util.concurrent.atomic.AtomicBoolean();
-    private volatile String reason = "", state = "STARTING", receiver = "none";
+    private volatile String reason = "", state = "STARTING", receiver = "none", failureCode = "";
+    private final Object invalidLock = new Object();
+    private final long historicalWaitNanos;
     private volatile long discarded,
             dropped,
             published,
@@ -50,6 +59,29 @@ public final class LiveBridge implements AutoCloseable {
             String alias,
             double pips,
             Supplier<String> journalHealth) {
+        this(
+                bind,
+                port,
+                healthPort,
+                capacity,
+                alias,
+                pips,
+                journalHealth,
+                DEFAULT_HISTORICAL_WAIT_NANOS);
+    }
+
+    /** Package-private so only tests can shorten the historical wait; production uses the 7-arg. */
+    LiveBridge(
+            String bind,
+            int port,
+            int healthPort,
+            int capacity,
+            String alias,
+            double pips,
+            Supplier<String> journalHealth,
+            long historicalWaitNanos) {
+        if (historicalWaitNanos < 1) throw new IllegalArgumentException("Invalid historical wait");
+        this.historicalWaitNanos = historicalWaitNanos;
         if (!Double.isFinite(pips)
                 || pips <= 0
                 || capacity < 1
@@ -96,6 +128,7 @@ public final class LiveBridge implements AutoCloseable {
             if ((long) n >= (long) capacity + (terminal ? 1L : 0L)) {
                 overflows.incrementAndGet();
                 invalidate("outbound buffer overflow");
+                dropped++; // the overflowing event was offered and refused: count it exactly once
                 return false;
             }
         } while (!depth.compareAndSet(n, n + 1));
@@ -104,15 +137,21 @@ public final class LiveBridge implements AutoCloseable {
         return true;
     }
 
-    /** Historical catch-up may wait for ACK capacity; LIVE must always use offer(). */
+    /**
+     * Historical catch-up may wait for ACK capacity; LIVE must always use offer(). The wait is
+     * bounded. When it ends because no receiver ever completed HELLO admission the bridge fails
+     * with RECEIVER_ADMISSION_TIMEOUT; an admitted receiver that stops ACKing keeps the existing
+     * RECEIVER_ACK_TIMEOUT policy. Either way the failure is terminal (fresh START required), and
+     * the triggering event is still counted (dropped) so delivery accounting stays exact.
+     */
     public boolean offerHistorical(CanonicalEvent event) {
-        long deadline = System.nanoTime() + 10_000_000_000L;
+        long deadline = System.nanoTime() + historicalWaitNanos;
         while (depth.get() >= capacity && running && !invalid) {
             if (Thread.currentThread().isInterrupted() || System.nanoTime() >= deadline) {
-                invalidate(
-                        "historical receiver backpressure timeout; start receiver then fresh"
-                                + " START");
-                return false;
+                failHistoricalWait(
+                        "historical receiver backpressure timeout",
+                        "; start receiver then fresh START");
+                break;
             }
             java.util.concurrent.locks.LockSupport.parkNanos(100_000L);
         }
@@ -121,20 +160,59 @@ public final class LiveBridge implements AutoCloseable {
 
     /** Drain historical backlog before the callback stream switches to non-waiting LIVE. */
     public void finishHistorical() {
-        long deadline = System.nanoTime() + 10_000_000_000L;
+        long deadline = System.nanoTime() + historicalWaitNanos;
         while (depth.get() > 0 && running && !invalid) {
             if (Thread.currentThread().isInterrupted() || System.nanoTime() >= deadline) {
-                invalidate("historical receiver drain timeout; fresh START required");
+                failHistoricalWait(
+                        "historical receiver drain timeout", "; fresh START required");
                 return;
             }
             java.util.concurrent.locks.LockSupport.parkNanos(100_000L);
         }
     }
 
+    private void failHistoricalWait(String head, String tail) {
+        if (receiver.equals("none")) {
+            invalidate(
+                    FAILURE_RECEIVER_ADMISSION,
+                    head
+                            + "; receiver admission failed (no receiver HELLO accepted within "
+                            + historicalWaitNanos / 1_000_000L
+                            + " ms)"
+                            + tail);
+        } else {
+            invalidate(FAILURE_RECEIVER_ACK, head + tail);
+        }
+    }
+
     public void invalidate(String why) {
-        reason = why;
-        invalid = true;
-        state = "INVALID";
+        invalidate(FAILURE_BRIDGE_INVALID, why);
+    }
+
+    /** First failure wins: a later symptom (shutdown, drain) must not overwrite the root cause. */
+    void invalidate(String code, String why) {
+        synchronized (invalidLock) {
+            if (!invalid) {
+                reason = why;
+                failureCode = code;
+                invalid = true;
+            }
+            state = "INVALID";
+        }
+    }
+
+    /** Terminal-state invariant: invalid is always reported as INVALID, even if the worker raced. */
+    private String shownState() {
+        return invalid ? "INVALID" : state;
+    }
+
+    /** Root-cause text of the terminal failure, or "" while the bridge is valid. */
+    public String failureReason() {
+        return invalid ? reason : "";
+    }
+
+    long historicalWaitNanos() {
+        return historicalWaitNanos;
     }
 
     public boolean invalid() {
@@ -169,7 +247,7 @@ public final class LiveBridge implements AutoCloseable {
 
     public String display() {
         double seconds = Math.max(.001, (System.nanoTime() - started) / 1e9);
-        return state
+        return shownState()
                 + " | receiver="
                 + (receiver.equals("none") ? "waiting" : "registered")
                 + " | published="
@@ -196,6 +274,14 @@ public final class LiveBridge implements AutoCloseable {
 
     public String status() {
         double seconds = Math.max(.001, (System.nanoTime() - started) / 1e9);
+        // One consistent view of the terminal-failure triple (written together in invalidate()).
+        final boolean invalidNow;
+        final String reasonNow, failureNow;
+        synchronized (invalidLock) {
+            invalidNow = invalid;
+            reasonNow = reason;
+            failureNow = failureCode;
+        }
         return "{\"protocol\":"
                 + quote(PROTOCOL)
                 + ",\"addon_version\":\"0.5.0\",\"session\":"
@@ -205,11 +291,13 @@ public final class LiveBridge implements AutoCloseable {
                 + ",\"pips\":"
                 + pips
                 + ",\"state\":"
-                + quote(state)
+                + quote(invalidNow ? "INVALID" : state)
                 + ",\"invalid\":"
-                + invalid
+                + invalidNow
                 + ",\"reason\":"
-                + quote(reason)
+                + quote(reasonNow)
+                + ",\"failure_code\":"
+                + (failureNow.isEmpty() ? "null" : quote(failureNow))
                 + ",\"receiver\":"
                 + quote(receiver)
                 + ",\"queue_depth\":"
@@ -313,10 +401,16 @@ public final class LiveBridge implements AutoCloseable {
                                 identity = id;
                                 receiver = owner;
                                 active = System.nanoTime();
-                                acknowledged = ack;
-                                while (!flight.isEmpty() && flight.peek().seq <= ack) {
-                                    flight.remove();
-                                    depth.decrementAndGet();
+                                // Once INVALID, in-flight events are (or are about to be) counted as
+                                // discarded. A late ACK must not also count them acknowledged: the
+                                // acknowledged watermark is frozen at the latch, so delivery stays
+                                // conservatively "unconfirmed" and the books balance.
+                                if (!invalid) {
+                                    acknowledged = ack;
+                                    while (!flight.isEmpty() && flight.peek().seq <= ack) {
+                                        flight.remove();
+                                        depth.decrementAndGet();
+                                    }
                                 }
                                 if (!invalid) state = "CONNECTED";
                                 if (hello) {
