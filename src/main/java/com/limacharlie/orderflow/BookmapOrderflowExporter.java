@@ -198,6 +198,12 @@ public class BookmapOrderflowExporter
     private EventBuffer queue;
     private LiveBridge bridge;
     private volatile String bridgeFailure = "";
+    // D-05-1: delivery failure is a terminal bridge state, reported once, never thrown into
+    // Bookmap's callback (a throw would skip the journal enqueue for an already-allocated seq).
+    private final java.util.concurrent.atomic.AtomicBoolean bridgeDeliveryReported =
+            new java.util.concurrent.atomic.AtomicBoolean();
+    // Test-only injection point; production always uses the 10 s default.
+    volatile long bridgeHistoricalWaitNanos = LiveBridge.DEFAULT_HISTORICAL_WAIT_NANOS;
     private CallbackMetrics callbackMetrics = new CallbackMetrics();
     private volatile long journalOverflows, journalDropped;
     private volatile int journalHighWater;
@@ -273,7 +279,8 @@ public class BookmapOrderflowExporter
                                     settings.bridgeQueueCapacity,
                                     alias,
                                     pips,
-                                    this::journalHealth);
+                                    this::journalHealth,
+                                    bridgeHistoricalWaitNanos);
                     if (!settings.exportMbo || !settings.exportTrades)
                         bridge.invalidate("MBO/trade filters disabled");
                 } catch (RuntimeException error) {
@@ -332,6 +339,7 @@ public class BookmapOrderflowExporter
         bridge = null;
         if (previous != null) previous.close();
         bridgeFailure = "";
+        bridgeDeliveryReported.set(false);
         journalOverflows = 0;
         journalDropped = 0;
         journalHighWater = 0;
@@ -619,9 +627,21 @@ public class BookmapOrderflowExporter
             if (error != null) {
                 throw new IllegalStateException("Writer failed; export is not valid", error);
             }
-            uiMessage = "Stopped cleanly";
+            boolean deliveryFailed = bridge != null && bridge.invalid();
+            // The archive is complete either way; receiver delivery is a separate outcome.
+            uiMessage =
+                    deliveryFailed
+                            ? "Stopped; archive complete, bridge delivery FAILED"
+                            : "Stopped cleanly";
             scheduleStatusRefresh(true);
-            System.out.println("[OrderflowExporter] complete: " + summaryFile);
+            System.out.println(
+                    "[OrderflowExporter] complete: "
+                            + summaryFile
+                            + (deliveryFailed
+                                    ? " (archive OK; BRIDGE DELIVERY FAILED: "
+                                            + bridge.failureReason()
+                                            + ")"
+                                    : ""));
         } catch (InterruptedException e) {
             writerError.compareAndSet(
                     null, new IllegalStateException("Shutdown interrupted; archive incomplete", e));
@@ -1367,10 +1387,13 @@ public class BookmapOrderflowExporter
         if (bridge != null) {
             // Reuse bounded startup pacing; explicit file replay also needs it after
             // REALTIME_START. Provider/unknown REALTIME callbacks remain non-waiting.
-            if (stopped) bridge.offerTerminal(event);
+            boolean accepted;
+            if (stopped) accepted = bridge.offerTerminal(event);
             else if (!realtimePhase || Boolean.FALSE.equals(providerSource))
-                bridge.offerHistorical(event);
-            else bridge.offer(event);
+                accepted = bridge.offerHistorical(event);
+            else accepted = bridge.offer(event);
+            // Journal persistence below is independent of receiver delivery and always continues.
+            if (!accepted) reportBridgeDeliveryFailure();
         }
         boolean responsive = realtimePhase && settings.responsiveLiveJournal
                 && !Boolean.FALSE.equals(providerSource);
@@ -1424,6 +1447,18 @@ public class BookmapOrderflowExporter
             }
         }
         journalHighWater = Math.max(journalHighWater, queue.size());
+    }
+
+    /** Surface a terminal bridge failure once per session; the archive keeps recording. */
+    private void reportBridgeDeliveryFailure() {
+        LiveBridge b = bridge;
+        if (b == null || !b.invalid() || !bridgeDeliveryReported.compareAndSet(false, true)) return;
+        uiMessage = "Bridge delivery FAILED; archive continues";
+        System.out.println(
+                "[OrderflowExporter] BRIDGE DELIVERY FAILED: "
+                        + b.failureReason()
+                        + " (journal/archive unaffected; fresh START required to deliver)");
+        scheduleStatusRefresh(true);
     }
 
     private String journalHealth() {
@@ -1579,8 +1614,11 @@ public class BookmapOrderflowExporter
         numberField(b, "journal_overflows", journalOverflows).append(',');
         numberField(b, "journal_queue_high_water", journalHighWater).append(',');
         b.append("\"callback_latency\":").append(callbackMetrics.json()).append(',');
-        nullableStringField(b, "bridge_error", bridgeFailure.isEmpty() ? null : bridgeFailure)
-                .append(',');
+        String bridgeError =
+                !bridgeFailure.isEmpty()
+                        ? bridgeFailure
+                        : (bridge != null && bridge.invalid() ? bridge.failureReason() : null);
+        nullableStringField(b, "bridge_error", bridgeError).append(',');
         b.append("\"bridge\":").append(bridge == null ? "null" : bridge.status()).append(',');
         field(b, "run_tag", effectiveRunTag());
         b.append('}');
