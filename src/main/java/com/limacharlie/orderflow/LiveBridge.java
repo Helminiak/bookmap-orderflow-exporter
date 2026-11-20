@@ -128,6 +128,7 @@ public final class LiveBridge implements AutoCloseable {
             if ((long) n >= (long) capacity + (terminal ? 1L : 0L)) {
                 overflows.incrementAndGet();
                 invalidate("outbound buffer overflow");
+                dropped++; // the overflowing event was offered and refused: count it exactly once
                 return false;
             }
         } while (!depth.compareAndSet(n, n + 1));
@@ -400,10 +401,16 @@ public final class LiveBridge implements AutoCloseable {
                                 identity = id;
                                 receiver = owner;
                                 active = System.nanoTime();
-                                acknowledged = ack;
-                                while (!flight.isEmpty() && flight.peek().seq <= ack) {
-                                    flight.remove();
-                                    depth.decrementAndGet();
+                                // Once INVALID, in-flight events are (or are about to be) counted as
+                                // discarded. A late ACK must not also count them acknowledged: the
+                                // acknowledged watermark is frozen at the latch, so delivery stays
+                                // conservatively "unconfirmed" and the books balance.
+                                if (!invalid) {
+                                    acknowledged = ack;
+                                    while (!flight.isEmpty() && flight.peek().seq <= ack) {
+                                        flight.remove();
+                                        depth.decrementAndGet();
+                                    }
                                 }
                                 if (!invalid) state = "CONNECTED";
                                 if (hello) {
